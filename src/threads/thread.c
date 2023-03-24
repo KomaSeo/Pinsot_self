@@ -75,7 +75,7 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
-void compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
+bool compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
 int64_t get_remain_time(struct thread * thread);
 void check_wait_threads();
 /* Initializes the threading system by transforming the code
@@ -219,12 +219,13 @@ thread_create (const char *name, int priority,
 
   return tid;
 }
-void compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED){
+bool compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED){
   struct thread * a_thread = list_entry(a,struct thread,blockelem);
   struct thread * b_thread = list_entry(b,struct thread,blockelem);
   int64_t a_leftTick = get_remain_time(a_thread);
   int64_t b_leftTick = get_remain_time(b_thread);
-  return a_leftTick < b_leftTick;
+  bool isSmaller =  a_leftTick < b_leftTick;
+  return isSmaller;
 }
 int64_t get_remain_time(struct thread * thread){
   return (thread->wait_ticks) - timer_elapsed(thread->wait_start_time);
