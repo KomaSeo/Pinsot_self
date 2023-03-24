@@ -253,7 +253,6 @@ thread_sleep(int64_t ticks){
   cur_thread->wait_start_time = timer_ticks();
   cur_thread->wait_ticks = ticks;
   list_insert_ordered(&block_list, &(cur_thread->blockelem),compare_wait_left_tick,NULL);
-  list_sort(&block_list,compare_wait_left_tick,NULL);
   thread_block();
   intr_set_level (old_level);
 }
