@@ -232,7 +232,7 @@ int get_remain_time(struct thread * thread){
 void check_wait_threads(){
   struct list_elem * a0;
   for(; !list_empty(&block_list);){
-    a0 = list_tail(&block_list)->prev;
+    a0 = list_head(&block_list)->next;
     struct thread * least_wait_left_thread = list_entry(a0, struct thread, blockelem);
     if(get_remain_time(least_wait_left_thread) < 0){
       list_remove(a0);
