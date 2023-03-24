@@ -76,7 +76,7 @@ void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
 void compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
-int get_remain_time(struct thread * thread);
+int64_t get_remain_time(struct thread * thread);
 void check_wait_threads();
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -226,7 +226,7 @@ void compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b
   int64_t b_leftTick = get_remain_time(b_thread);
   return a_leftTick < b_leftTick;
 }
-int get_remain_time(struct thread * thread){
+int64_t get_remain_time(struct thread * thread){
   return (thread->wait_ticks) - timer_elapsed(thread->wait_start_time);
 }
 void check_wait_threads(){
