@@ -246,12 +246,14 @@ void check_wait_threads(){
 }
 void
 thread_sleep(int64_t ticks){
-  intr_disable();
+  
+  enum intr_level old_level = intr_disable();
   struct thread * cur_thread = thread_current();
   cur_thread->wait_start_time = timer_ticks();
   cur_thread->wait_ticks = ticks;
   list_insert_ordered(&block_list,&(cur_thread->blockelem),compare_wait_left_tick,NULL);
   thread_block();
+  intr_set_level (old_level);
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
