@@ -251,7 +251,7 @@ thread_sleep(int64_t ticks){
   struct thread * cur_thread = thread_current();
   cur_thread->wait_start_time = timer_ticks();
   cur_thread->wait_ticks = ticks;
-  list_insert_ordered(&block_list,&(cur_thread->blockelem),compare_wait_left_tick,NULL);
+  list_push_front(&block_list, &(cur_thread->blockelem));
   thread_block();
   intr_set_level (old_level);
 }
