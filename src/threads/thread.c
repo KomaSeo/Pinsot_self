@@ -225,7 +225,7 @@ bool compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b
   struct thread * b_thread = list_entry(b,struct thread,blockelem);
   int64_t a_leftTick = get_remain_time(a_thread);
   int64_t b_leftTick = get_remain_time(b_thread);
-  bool isSmaller =  a_leftTick < b_leftTick;
+  bool isSmaller =  a_leftTick <= b_leftTick;
   return isSmaller;
 }
 int64_t get_remain_time(struct thread * thread){
