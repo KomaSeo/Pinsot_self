@@ -282,6 +282,13 @@ thread_block (void)
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
+bool
+compare_thread_priorty(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED){
+  struct thread * a_thread = list_entry(a,struct thread,blockelem);
+  struct thread * b_thread = list_entry(b,struct thread,blockelem);
+  return a_thread->priority < b_thread->priority;
+}
+
 void
 thread_unblock (struct thread *t) 
 {
@@ -291,7 +298,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list,&t->elem,compare_thread_priorty,NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -362,7 +369,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list,&cur->elem,compare_thread_priorty,NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -389,7 +396,10 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  struct thread * cur_thread = thread_current();
+  cur_thread->priority = new_priority;
+  list_remove(&cur_thread->elem);
+  list_insert_ordered(&ready_list,&cur_thread->elem,compare_thread_priorty,NULL);
 }
 
 /* Returns the current thread's priority. */
