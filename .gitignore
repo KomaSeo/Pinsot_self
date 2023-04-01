@@ -53,8 +53,8 @@ dkms.conf
 
 
 #pintos_make_adjustment
-./src/utils/pintos
-./src/utils/Pintos.pm
-./src/utils/pintos-gdb
-./src/utils/Makefile
-./src/threads/Make.vars
+src/utils/pintos
+src/utils/Pintos.pm
+src/utils/pintos-gdb
+src/utils/Makefile
+src/threads/Make.vars
