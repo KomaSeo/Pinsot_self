@@ -31,7 +31,6 @@
 #include <string.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -156,7 +155,19 @@ sema_test_helper (void *sema_)
       sema_up (&sema[1]);
     }
 }
-
+int
+sema_get_maximum_priority (struct semaphore *sema) 
+{
+  enum intr_level old_level = intr_disable();
+  if(list_empty(&sema->waiters)){
+    return 0;
+  }
+  struct list_elem * max_elem = list_max(&sema->waiters,compare_thread_priorty,NULL);
+  struct thread * max_thread = list_entry(max_elem,struct thread, elem);
+  int priority = max_thread->priority;
+  intr_set_level(old_level);
+  return priority;
+}
 /* Initializes LOCK.  A lock can be held by at most a single
    thread at any given time.  Our locks are not "recursive", that
    is, it is an error for the thread currently holding a lock to
@@ -179,6 +190,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  lock->old_priority = PRI_MIN;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -195,9 +207,29 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
-  sema_down (&lock->semaphore);
+  enum intr_level old_level = intr_disable();
+  if(!sema_try_down(&lock->semaphore)){
+    int max_priority = sema_get_maximum_priority(&lock->semaphore);
+    int cur_priority = thread_get_priority();
+    int holder_priority = thread_get_priority_of(lock->holder);
+    max_priority = cur_priority > max_priority? cur_priority : max_priority;
+    max_priority = holder_priority > max_priority ? holder_priority : max_priority;
+    thread_set_priorty_of(max_priority,  lock->holder);
+    thread_current()->waiting_lock = lock;
+    sema_down (&lock->semaphore);
+  }
+  thread_current()->waiting_lock = NULL;
+  lock->old_priority = thread_current()->priority;
   lock->holder = thread_current ();
+  thread_set_priority(sema_get_maximum_priority(&lock->semaphore));
+  intr_set_level(old_level);
+}
+void
+lock_update_priority (struct lock* lock){
+  int max_priority = sema_get_maximum_priority(&lock->semaphore);
+  int holder_priority = thread_get_priority(lock->holder);
+  max_priority = holder_priority > max_priority ? holder_priority : max_priority;
+  thread_set_priority_of(max_priority, lock->holder);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -230,9 +262,12 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+  enum intr_level old_level = intr_disable();
+  thread_set_priorty_of(lock->old_priority, lock->holder);
   lock->holder = NULL;
+  lock->old_priority = -1;
   sema_up (&lock->semaphore);
+  intr_set_level(old_level);
 }
 
 /* Returns true if the current thread holds LOCK, false

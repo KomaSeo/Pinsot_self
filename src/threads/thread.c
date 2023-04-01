@@ -396,12 +396,29 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  struct thread * cur_thread = thread_current();
-  cur_thread->priority = new_priority;
-  list_remove(&cur_thread->elem);
-  list_insert_ordered(&ready_list,&cur_thread->elem,compare_thread_priorty,NULL);
+  thread_set_priorty_of(new_priority, thread_current());
 }
 
+void thread_set_priorty_of(int new_priority, struct thread * m_thread){
+  if(m_thread->priority == new_priority){
+    return;
+  }
+  m_thread->priority = new_priority;
+  struct lock * waiting_lock = m_thread->waiting_lock;
+  if(waiting_lock != NULL){
+    lock_update_priority(waiting_lock);
+  }
+  if(m_thread->status == THREAD_READY){
+    list_remove(&m_thread->elem);
+    list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priorty,NULL);
+  }
+
+}
+
+int
+thread_get_priority_of(struct thread * m_thread){
+  return m_thread->priority;
+}
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 

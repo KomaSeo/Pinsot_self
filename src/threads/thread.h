@@ -93,6 +93,7 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     struct list_elem blockelem;
+    struct lock * waiting_lock;
     int64_t wait_start_time;
     int64_t wait_ticks;
 
@@ -134,8 +135,11 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
+bool compare_thread_priorty(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
+int thread_get_priority_of(struct thread * m_thread);
 int thread_get_priority (void);
 void thread_set_priority (int);
+void thread_set_priorty_of(int new_priority, struct thread * m_thread);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
