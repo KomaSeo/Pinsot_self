@@ -227,7 +227,7 @@ lock_acquire (struct lock *lock)
 void
 lock_update_priority (struct lock* lock){
   int max_priority = sema_get_maximum_priority(&lock->semaphore);
-  int holder_priority = thread_get_priority(lock->holder);
+  int holder_priority = thread_get_priority_of(lock->holder);
   max_priority = holder_priority > max_priority ? holder_priority : max_priority;
   thread_set_priority_of(max_priority, lock->holder);
 }
