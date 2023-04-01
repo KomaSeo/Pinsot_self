@@ -283,7 +283,7 @@ thread_block (void)
    it may expect that it can atomically unblock a thread and
    update other data. */
 bool
-compare_thread_priorty(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED){
+compare_thread_priority(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED){
   struct thread * a_thread = list_entry(a,struct thread,blockelem);
   struct thread * b_thread = list_entry(b,struct thread,blockelem);
   return a_thread->priority < b_thread->priority;
@@ -298,7 +298,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered(&ready_list,&t->elem,compare_thread_priorty,NULL);
+  list_insert_ordered(&ready_list,&t->elem,compare_thread_priority,NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -369,7 +369,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_insert_ordered(&ready_list,&cur->elem,compare_thread_priorty,NULL);
+    list_insert_ordered(&ready_list,&cur->elem,compare_thread_priority,NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -410,7 +410,7 @@ void thread_set_priority_of(int new_priority, struct thread * m_thread){
   }
   if(m_thread->status == THREAD_READY){
     list_remove(&m_thread->elem);
-    list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priorty,NULL);
+    list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priority,NULL);
   }
 
 }
