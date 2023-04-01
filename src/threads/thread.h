@@ -135,7 +135,7 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
-bool compare_thread_priorty(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
+bool compare_thread_priority(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
 int thread_get_priority_of(struct thread * m_thread);
 int thread_get_priority (void);
 void thread_set_priority (int);

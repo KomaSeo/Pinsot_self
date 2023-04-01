@@ -162,7 +162,7 @@ sema_get_maximum_priority (struct semaphore *sema)
   if(list_empty(&sema->waiters)){
     return 0;
   }
-  struct list_elem * max_elem = list_max(&sema->waiters,compare_thread_priorty,NULL);
+  struct list_elem * max_elem = list_max(&sema->waiters,compare_thread_priority,NULL);
   struct thread * max_thread = list_entry(max_elem,struct thread, elem);
   int priority = max_thread->priority;
   intr_set_level(old_level);
@@ -214,7 +214,7 @@ lock_acquire (struct lock *lock)
     int holder_priority = thread_get_priority_of(lock->holder);
     max_priority = cur_priority > max_priority? cur_priority : max_priority;
     max_priority = holder_priority > max_priority ? holder_priority : max_priority;
-    thread_set_priorty_of(max_priority,  lock->holder);
+    thread_set_priority_of(max_priority,  lock->holder);
     thread_current()->waiting_lock = lock;
     sema_down (&lock->semaphore);
   }
@@ -263,7 +263,7 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   enum intr_level old_level = intr_disable();
-  thread_set_priorty_of(lock->old_priority, lock->holder);
+  thread_set_priority_of(lock->old_priority, lock->holder);
   lock->holder = NULL;
   lock->old_priority = -1;
   sema_up (&lock->semaphore);
