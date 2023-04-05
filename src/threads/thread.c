@@ -217,7 +217,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  thread_yield();
   return tid;
 }
 bool compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED){
