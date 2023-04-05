@@ -236,7 +236,7 @@ void check_wait_threads(){
   for(; !list_empty(&block_list);){
     a0 = list_begin(&block_list);
     struct thread * least_wait_left_thread = list_entry(a0, struct thread, blockelem);
-    if(get_remain_time(least_wait_left_thread) < 0){
+    if(get_remain_time(least_wait_left_thread) <= 0){
       list_remove(a0);
       thread_unblock(least_wait_left_thread);
     }
