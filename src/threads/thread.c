@@ -284,8 +284,8 @@ thread_block (void)
    update other data. */
 bool
 compare_thread_priority(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED){
-  struct thread * a_thread = list_entry(a,struct thread,blockelem);
-  struct thread * b_thread = list_entry(b,struct thread,blockelem);
+  struct thread * a_thread = list_entry(a,struct thread,elem);
+  struct thread * b_thread = list_entry(b,struct thread,elem);
   return a_thread->priority > b_thread->priority;
 }
 
