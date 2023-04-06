@@ -221,7 +221,9 @@ lock_acquire (struct lock *lock)
   thread_current()->waiting_lock = NULL;
   lock->old_priority = thread_current()->priority;
   lock->holder = thread_current ();
-  thread_set_priority(sema_get_maximum_priority(&lock->semaphore));
+  int max_priority = sema_get_maximum_priority(&lock->semaphore);
+  int cur_priority = thread_get_priority();
+  thread_set_priority(max_priority > cur_priority ? max_priority : cur_priority);
   intr_set_level(old_level);
 }
 void
