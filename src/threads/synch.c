@@ -68,6 +68,9 @@ sema_down (struct semaphore *sema)
   while (sema->value == 0)
     {
       list_insert_ordered(&sema->waiters,&thread_current()->elem,compare_thread_priority,NULL);
+      if(thread_current()->waiting_lock){
+        lock_update_priority(thread_current()->waiting_lock);
+      }
       thread_block ();
     }
   sema->value--;
@@ -162,7 +165,7 @@ sema_get_maximum_priority (struct semaphore *sema)
   if(list_empty(&sema->waiters)){
     return 0;
   }
-  struct list_elem * max_elem = list_max(&sema->waiters,compare_thread_priority,NULL);
+  struct list_elem * max_elem = list_min(&sema->waiters,compare_thread_priority,NULL);
   struct thread * max_thread = list_entry(max_elem,struct thread, elem);
   int priority = max_thread->priority;
   intr_set_level(old_level);
@@ -209,7 +212,6 @@ lock_acquire (struct lock *lock)
   enum intr_level old_level = intr_disable();
   if(!sema_try_down(&lock->semaphore)){
     thread_current()->waiting_lock = lock;
-    lock_update_priority(lock);//need to fix this. lock_update needs current process is included in waiters list.
     sema_down (&lock->semaphore);
   }
   list_push_back(&thread_current()->lock_list,&lock->elem);
