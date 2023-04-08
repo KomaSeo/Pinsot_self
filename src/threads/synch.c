@@ -265,11 +265,14 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   enum intr_level old_level = intr_disable();
-  thread_set_priority_of(lock->old_priority, lock->holder);
+  int old_prior = lock->old_priority;
+  struct thread * holder = lock->holder;
+  sema_up (&lock->semaphore);
   lock->holder = NULL;
   lock->old_priority = -1;
-  sema_up (&lock->semaphore);
   intr_set_level(old_level);
+  thread_set_priority_of(lock->old_priority, lock->holder);
+
 }
 
 /* Returns true if the current thread holds LOCK, false
