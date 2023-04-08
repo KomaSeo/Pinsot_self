@@ -209,7 +209,7 @@ lock_acquire (struct lock *lock)
   enum intr_level old_level = intr_disable();
   if(!sema_try_down(&lock->semaphore)){
     thread_current()->waiting_lock = lock;
-    lock_update_priority(thread_waiting_lock);//need to fix this. lock_update needs current process is included in waiters list.
+    lock_update_priority(lock);//need to fix this. lock_update needs current process is included in waiters list.
     sema_down (&lock->semaphore);
   }
   list_push_back(&thread_current()->lock_list,&lock->elem);
@@ -217,6 +217,7 @@ lock_acquire (struct lock *lock)
   lock->holder = thread_current ();
   lock_update_priority(lock);
   intr_set_level(old_level);
+  thread_yield();
 }
 void
 lock_update_priority (struct lock* lock){
@@ -262,6 +263,7 @@ lock_release (struct lock *lock)
   thread_update_priority(holder);
   sema_up (&lock->semaphore);
   intr_set_level(old_level);
+  thread_yield();
 
 }
 
