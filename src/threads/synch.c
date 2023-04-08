@@ -271,7 +271,7 @@ lock_release (struct lock *lock)
   lock->holder = NULL;
   lock->old_priority = -1;
   intr_set_level(old_level);
-  thread_set_priority_of(lock->old_priority, lock->holder);
+  thread_set_priority_of(old_prior, holder);
 
 }
 
