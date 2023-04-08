@@ -406,6 +406,7 @@ thread_set_priority (int new_priority)
 void thread_set_priority_of(int new_priority, struct thread * m_thread){
     m_thread->original_priority = new_priority;
     thread_update_priority(m_thread);
+    thread_yield();
 }
 void thread_update_priority(struct thread * m_thread){
     //change thread
@@ -431,7 +432,6 @@ void thread_update_priority(struct thread * m_thread){
         list_remove(&m_thread->elem);
         list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priority,NULL);
     }
-    thread_yield();
 }
 
 int
