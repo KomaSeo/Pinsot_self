@@ -290,7 +290,7 @@ bool
 compare_thread_priority(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED){
   struct thread * a_thread = list_entry(a,struct thread,elem);
   struct thread * b_thread = list_entry(b,struct thread,elem);
-  return a_thread->priority > b_thread->priority;
+  return a_thread->priority < b_thread->priority;
 }
 
 void
@@ -613,7 +613,7 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return list_entry (list_pop_back (&ready_list), struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page

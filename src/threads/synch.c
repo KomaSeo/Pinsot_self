@@ -165,7 +165,7 @@ sema_get_maximum_priority (struct semaphore *sema)
   if(list_empty(&sema->waiters)){
     return 0;
   }
-  struct list_elem * max_elem = list_min(&sema->waiters,compare_thread_priority,NULL);
+  struct list_elem * max_elem = list_max(&sema->waiters,compare_thread_priority,NULL);
   struct thread * max_thread = list_entry(max_elem,struct thread, elem);
   int priority = max_thread->priority;
   intr_set_level(old_level);
