@@ -79,6 +79,10 @@ static tid_t allocate_tid (void);
 bool compare_wait_left_tick(const struct list_elem *a, const struct list_elem *b, void * aux UNUSED);
 int64_t get_remain_time(struct thread * thread);
 void check_wait_threads();
+
+bool compare_lock_priority_donation(struct list_elem * a, struct list_elem * b, void * aux UNUSED);
+int thread_get_lock_maximum_donation(struct thread* m_thread);
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -400,20 +404,57 @@ thread_set_priority (int new_priority)
 }
 
 void thread_set_priority_of(int new_priority, struct thread * m_thread){
-  if(m_thread->priority == new_priority){
-    return;
-  }
-  m_thread->priority = new_priority;
-  struct lock * waiting_lock = m_thread->waiting_lock;
-  if(waiting_lock != NULL){
-    lock_update_priority(waiting_lock);
-  }
-  if(m_thread->status == THREAD_READY){
-    list_remove(&m_thread->elem);
-    list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priority,NULL);
-  }
-  thread_yield();
+    m_thread->original_priority = new_priority;
+    thread_update_priority(m_thread);
+}
+void thread_update_priority(struct thread * m_thread){
+    //change thread
+    int thread_prev_priority = m_thread->priority;
+    int thread_original_priority = m_thread->original_priority;
+    int donated_priority = thread_get_lock_maximum_donation(m_thread);
+    int max_priority = donated_priority > thread_original_priority ? donated_priority : thread_original_priority;
+    m_thread->priority = max_priority;
+    if(thread_prev_priority == m_thread->priority){
+        return;
+    }
+    //apply change to other threads
+    struct lock * waiting_lock = m_thread->waiting_lock;
+    if(waiting_lock != NULL){
+        lock_update_priority(waiting_lock);
+    }
+    //resort scheduler.
+    if(m_thread->status == THREAD_READY){
+        list_remove(&m_thread->elem);
+        list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priority,NULL);
+    }
+    else if(m_thread->waiting_lock){
+        list_remove(&m_thread->elem);
+        list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priority,NULL);
+    }
+    thread_yield();
+}
 
+int
+thread_get_lock_maximum_donation(struct thread* m_thread){
+    struct list * locklist = &m_thread->lock_list;
+    int max_donation = -1;//if there is no lock_maximum_donation, return -1.
+    if(list_empty(locklist)){
+        max_donation = -1;
+    }
+    else{
+        struct list_elem * max_lock_elem = list_max(locklist,compare_lock_priority_donation,NULL);
+        struct lock * max_lock = list_entry(max_lock_elem,struct lock, elem);
+        max_donation = sema_get_maximum_priority(&max_lock->semaphore);
+    }
+    return max_donation;
+}
+bool
+compare_lock_priority_donation(struct list_elem * a, struct list_elem * b, void * aux UNUSED){
+    struct lock *lock_a = list_entry(a,struct lock, elem);
+    struct lock * lock_b = list_entry(b,struct lock, elem);
+    int a_sem = sema_get_maximum_priority(&lock_a->semaphore);
+    int b_sem = sema_get_maximum_priority(&lock_b->semaphore);
+    return a_sem < b_sem;
 }
 
 int
@@ -541,6 +582,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
+  t->original_priority = priority;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_init(&t->lock_list);

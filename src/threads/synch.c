@@ -208,28 +208,21 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   enum intr_level old_level = intr_disable();
   if(!sema_try_down(&lock->semaphore)){
-    int cur_priority = thread_get_priority();
-    int holder_priority = thread_get_priority_of(lock->holder);
-    if(cur_priority > holder_priority){
-        thread_set_priority_of(cur_priority,lock->holder);
-    }
     thread_current()->waiting_lock = lock;
+    lock_update_priority(thread_waiting_lock);//need to fix this. lock_update needs current process is included in waiters list.
     sema_down (&lock->semaphore);
   }
   list_push_back(&thread_current()->lock_list,&lock->elem);
   thread_current()->waiting_lock = NULL;
   lock->holder = thread_current ();
-  int max_priority = sema_get_maximum_priority(&lock->semaphore);
-  int cur_priority = thread_get_priority();
-  thread_set_priority(max_priority > cur_priority ? max_priority : cur_priority);
+  lock_update_priority(lock);
   intr_set_level(old_level);
 }
 void
 lock_update_priority (struct lock* lock){
-  int max_priority = sema_get_maximum_priority(&lock->semaphore);
-  int holder_priority = thread_get_priority_of(lock->holder);
-  max_priority = holder_priority > max_priority ? holder_priority : max_priority;
-  thread_set_priority_of(max_priority, lock->holder);
+    if(lock->holder){
+        thread_update_priority(lock->holder);
+    }
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -265,10 +258,10 @@ lock_release (struct lock *lock)
   enum intr_level old_level = intr_disable();
   struct thread * holder = lock->holder;
   list_remove(&lock->elem);
-  sema_up (&lock->semaphore);
   lock->holder = NULL;
+  thread_update_priority(holder);
+  sema_up (&lock->semaphore);
   intr_set_level(old_level);
-  //need to update priority
 
 }
 
