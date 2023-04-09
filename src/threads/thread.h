@@ -140,7 +140,7 @@ int thread_get_priority_of(struct thread * m_thread);
 int thread_get_priority (void);
 void thread_set_priority (int);
 void thread_set_priority_of(int new_priority, struct thread * m_thread);
-void thread_update_priority(struct thread * m_thread);
+bool thread_update_priority(struct thread * m_thread);
 
 int thread_get_nice (void);
 void thread_set_nice (int);

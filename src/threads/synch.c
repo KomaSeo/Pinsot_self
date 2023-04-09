@@ -221,11 +221,12 @@ lock_acquire (struct lock *lock)
   list_push_back(&thread_current()->lock_list,&lock->elem);
   thread_current()->waiting_lock = NULL;
   lock->holder = thread_current ();
-  lock_update_priority(lock);
+  bool is_priority_change = lock_update_priority(lock);
   intr_set_level(old_level);
-  thread_yield();
+  if(is_priority_change)
+    thread_yield();
 }
-void
+bool
 lock_update_priority (struct lock* lock){
     if(lock->holder){
         thread_update_priority(lock->holder);

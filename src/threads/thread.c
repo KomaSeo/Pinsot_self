@@ -400,15 +400,17 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority)
 {
-  thread_set_priority_of(new_priority, thread_current());
+    struct thread * target_thread = thread_current();
+    thread_set_priority_of(new_priority, target_thread);
 }
 
 void thread_set_priority_of(int new_priority, struct thread * m_thread){
     m_thread->original_priority = new_priority;
-    thread_update_priority(m_thread);
-    thread_yield();
+    if(thread_update_priority(m_thread)){
+        thread_yield();
+    }
 }
-void thread_update_priority(struct thread * m_thread){
+bool thread_update_priority(struct thread * m_thread){//return true if there is a change
     //change thread
     int thread_prev_priority = m_thread->priority;
     int thread_original_priority = m_thread->original_priority;
@@ -416,13 +418,14 @@ void thread_update_priority(struct thread * m_thread){
     int max_priority = donated_priority > thread_original_priority ? donated_priority : thread_original_priority;
     m_thread->priority = max_priority;
     if(thread_prev_priority == m_thread->priority){
-        return;
+        return false;
     }
     //apply change to other threads
     struct lock * waiting_lock = m_thread->waiting_lock;
     if(waiting_lock != NULL){
         lock_update_priority(waiting_lock);
     }
+    return true;
 }
 
 int
