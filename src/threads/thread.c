@@ -302,7 +302,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered(&ready_list,&t->elem,compare_thread_priority,NULL);
+  list_push_back(&ready_list,&t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -373,7 +373,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread)
-    list_insert_ordered(&ready_list,&cur->elem,compare_thread_priority,NULL);
+    list_push_back(&ready_list,&cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -422,15 +422,6 @@ void thread_update_priority(struct thread * m_thread){
     struct lock * waiting_lock = m_thread->waiting_lock;
     if(waiting_lock != NULL){
         lock_update_priority(waiting_lock);
-    }
-    //resort scheduler.
-    if(m_thread->status == THREAD_READY){
-        list_remove(&m_thread->elem);
-        list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priority,NULL);
-    }
-    else if(m_thread->waiting_lock){
-        list_remove(&m_thread->elem);
-        list_insert_ordered(&ready_list,&m_thread->elem,compare_thread_priority,NULL);
     }
 }
 
