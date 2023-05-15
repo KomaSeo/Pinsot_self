@@ -123,8 +123,8 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid)
 {
-  sys_wait_W(child_tid);
-  return -1;
+  return sys_wait_W(child_tid);
+
 }
 
 /* Free the current process's resources. */
