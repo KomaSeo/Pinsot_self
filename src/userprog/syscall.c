@@ -40,13 +40,35 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   //uint32_t segment_start = 0x08084000;//TODO
   uint32_t segment_start = PHYS_BASE - PGSIZE;//TODO
-  if(f->esp > PHYS_BASE-8){
+  if(f->esp > PHYS_BASE-4){
     sys_unexpected_exit();
   }
+  int checkbytes = 0;
+  int syscall_num = stack_pop(f,0);
+  switch (syscall_num){
+    case SYS_HALT : checkbytes = 4; break;
+    case SYS_EXIT : ;
+    case SYS_EXEC : ;
+    case SYS_REMOVE : ;
+    case SYS_TELL: ;                    /* Report current position in a file. */
+    case SYS_CLOSE: ;
+    case SYS_FILESIZE : ;               /* Obtain a file's size. */
+    case SYS_OPEN : ;                  /* Open a file. */
+    case SYS_WAIT : checkbytes = 8; break;                   /* Wait for a child process to die. */
+    case SYS_CREATE : ;                 /* Delete a file. */
+    case SYS_READ : ;                   /* Read from a file. */
+    case SYS_SEEK: checkbytes = 12;break;                   /* Change position in a file. */
+    case SYS_WRITE : checkbytes = 16; break;                 /* Write to a file. */
+  }
+  if(f->esp > PHYS_BASE-checkbytes){
+    sys_unexpected_exit();
+  }
+
+
+
   //if(f->esp < segment_start){
   //  sys_unexpected_exit();
   //}
-  int syscall_num = stack_pop(f,0);
   switch (syscall_num){
     case SYS_HALT : sys_halt(); break;
     case SYS_EXIT : sys_exit(f); break;
