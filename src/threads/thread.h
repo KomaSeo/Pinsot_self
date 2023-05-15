@@ -1,6 +1,7 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 
+#include "filesys/filesys.h"
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -84,12 +85,19 @@ struct thread
   {
     /* Owned by thread.c. */
     tid_t tid;                          /* Thread identifier. */
+    tid_t parent_tid;
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+    struct list_elem child_list_elem;
+    struct list child_list;
+    int exit_status;
+    bool is_parent_waiting;
+    struct file * FDT[128];
+    struct file* selfFile;
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -137,5 +145,8 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+struct thread* find_thread(tid_t);
+void thread_reap(struct thread * target_thread);
 
 #endif /* threads/thread.h */

@@ -3,4 +3,5 @@
 
 void syscall_init (void);
 
+void sys_unexpected_exit();
 #endif /* userprog/syscall.h */
