@@ -23,3 +23,8 @@ src/threads_backup
 */Makefile
 *.vars
 *.dsk
+
+Makefile
+Makefile.*
+
+src/Make*
