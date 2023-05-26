@@ -15,16 +15,15 @@
 src/utils/pintos
 src/utils/Pintos.pm
 src/utils/pintos-gdb
-src/utils/Makefile
-src/threads/Make.vars
 src/threads_backup
 
 *.pm
-*/Makefile
 *.vars
 *.dsk
 
-Makefile
-Makefile.*
+src/devices/shutdown.c
+src/misc/gdb-macros
+src/utils/Makefile
+src/threads/Make.vars
 
-src/Make*
+*.patch
