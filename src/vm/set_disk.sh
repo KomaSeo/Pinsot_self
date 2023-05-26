@@ -1,4 +1,8 @@
 #!/bin/bash
+make
+cd ../userprog
+make
+cd ../vm
 userprogpath=./build/tests/userprog/
 vmpath=./build/tests/vm/
 targetProg=page-linear
@@ -11,5 +15,5 @@ pintos -p ${vmpath}${targetProg} -a ${targetProg} -- -q
 #pintos -p ${userprogpath}${targetProg} -a ${targetProg} -- -q
 
 
-pintos -q run ${targetProg}
-#pintos --gdb -- run ${targetProg}
+#pintos -q run ${targetProg}
+pintos --gdb -- run ${targetProg}

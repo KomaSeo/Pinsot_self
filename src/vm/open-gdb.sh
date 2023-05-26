@@ -1,4 +1,6 @@
 #!/bin/bash
-make clean
 make
-pintos-gdb ./build/kernel.o
+cd ../userprog
+make
+cd ../vm
+pintos-gdb ../userprog/build/kernel.o
