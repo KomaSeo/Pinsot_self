@@ -187,6 +187,7 @@ start_process (void *pcb_)
     palloc_free_page (cmdline_tokens);
   }
 
+  hash_init (&t->vm_list, vm_hash_func,vm_less_func,NULL);
   /* Assign PCB */
   // we maintain an one-to-one mapping between pid and tid, with identity function.
   // pid is determined, so interact with process_execute() for maintaining child_list
