@@ -1,5 +1,6 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
+#include <hash.h>
 
 #include <debug.h>
 #include <list.h>
@@ -99,6 +100,8 @@ struct thread
     // needed for priority donations
     struct lock *waiting_lock;          /* The lock object on which this thread is waiting (or NULL if not locked) */
     struct list locks;                  /* List of locks the thread holds (for multiple donations) */
+
+    struct hash vm_list;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

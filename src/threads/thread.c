@@ -11,6 +11,8 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
+#include <hash.h>
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -380,6 +382,7 @@ thread_exit (void)
      when it calls thread_schedule_tail(). */
   intr_disable ();
   list_remove (&thread_current()->allelem);
+  hash_destroy(&curr->vm_list,vm_destroy);
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -598,6 +601,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->locks);
   t->sleep_endtick = 0;
   t->magic = THREAD_MAGIC;
+  hash_init (&t->vm_list, vm_hash_func,vm_less_func,NULL);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

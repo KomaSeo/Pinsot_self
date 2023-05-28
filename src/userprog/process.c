@@ -18,6 +18,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
 
 
 #ifdef DEBUG
@@ -37,6 +38,7 @@ static void push_arguments (const char *[], int cnt, void **esp);
 pid_t
 process_execute (const char *cmdline)
 {
+
   char *cmdline_copy = NULL, *file_name = NULL;
   char *save_ptr = NULL;
   struct process_control_block *pcb = NULL;
@@ -144,6 +146,7 @@ start_process (void *pcb_)
     if_.cs = SEL_UCSEG;
     if_.eflags = FLAG_IF | FLAG_MBS;
     success = load (file_name, &if_.eip, &if_.esp);
+
     if (success) {
       //push_arguments (cmdline_tokens, cnt, &if_.esp);
       ASSERT(cnt >= 0);
@@ -195,8 +198,10 @@ start_process (void *pcb_)
   sema_up(&pcb->sema_initialization);
 
   /* If load failed, quit. */
-  if (!success)
+  if (!success){
     sys_exit (-1);
+  }
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -241,7 +246,7 @@ process_wait (tid_t child_tid)
 
   // if child process is not found, return -1 immediately
   if (child_pcb == NULL) return -1;
-  
+
   // already waiting (the parent already called wait on child's pid)
   if (child_pcb->waiting) return -1; // a process may wait for any fixed child at most once
   else child_pcb->waiting = true;
@@ -249,7 +254,7 @@ process_wait (tid_t child_tid)
   // wait(block) until child terminates
   // see process_exit() for signaling this semaphore
   if (! child_pcb->exited) sema_down(& (child_pcb->sema_wait));
-  
+
   ASSERT (child_pcb->exited == true);
 
   // remove from child_list
@@ -484,7 +489,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     case PT_SHLIB:
       goto finish;
     case PT_LOAD:
-      if (validate_segment (&phdr, file))
+      if (validate_segment(&phdr, file))
       {
         bool writable = (phdr.p_flags & PF_W) != 0;
         uint32_t file_page = phdr.p_offset & ~PGMASK;
@@ -507,11 +512,15 @@ load (const char *file_name, void (**eip) (void), void **esp)
           zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
         }
         if (!load_segment (file, file_page, (void *) mem_page,
-                           read_bytes, zero_bytes, writable))
+                           read_bytes, zero_bytes, writable)){
+          printf("invalid load segment\n");
           goto finish;
+        }
       }
-      else
+      else{
+        printf("invalid segment\n");
         goto finish;
+      }
       break;
     }
   }
@@ -618,8 +627,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
-        return false;
+
+      if (kpage == NULL){
+          return false;
+        }
 
       /* Load this page. */
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
@@ -636,6 +647,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           return false;
         }
 
+      struct vm_entry * entry = get_new_vm_entry(VF_InDIsk | VF_IsInitial | VF_Write,upage);
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;

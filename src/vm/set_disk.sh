@@ -1,8 +1,5 @@
 #!/bin/bash
-make
-cd ../userprog
-make
-cd ../vm
+./make.sh
 userprogpath=./build/tests/userprog/
 vmpath=./build/tests/vm/
 targetProg=page-linear
