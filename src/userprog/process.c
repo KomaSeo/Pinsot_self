@@ -26,7 +26,7 @@
 #else
 #define _DEBUG_PRINTF(...) /* do nothing */
 #endif
-
+#define MAX_STACK_SIZE 0x800000
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static void push_arguments (const char *[], int cnt, void **esp);
@@ -128,6 +128,8 @@ start_process (void *pcb_)
   const char **cmdline_tokens = (const char**) palloc_get_page(0);
 
   struct intr_frame if_;
+
+  hash_init (&t->vm_list, vm_hash_func,vm_less_func,NULL);
   if (cmdline_tokens == NULL){
     printf("[Error] Kernel Error: Not enough memory\n");
   }
@@ -187,7 +189,6 @@ start_process (void *pcb_)
     palloc_free_page (cmdline_tokens);
   }
 
-  hash_init (&t->vm_list, vm_hash_func,vm_less_func,NULL);
   /* Assign PCB */
   // we maintain an one-to-one mapping between pid and tid, with identity function.
   // pid is determined, so interact with process_execute() for maintaining child_list
@@ -647,8 +648,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           palloc_free_page (kpage);
           return false;
         }
-
-      struct vm_entry * entry = get_new_vm_entry(VF_InDIsk | VF_IsInitial | VF_Write,upage);
+      //add_new_vm_entry_at(thread_current(),(VF_InDIsk | VF_IsInitial | VF_Write),upage);
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
@@ -711,16 +711,27 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
+  uint8_t * target_vm_addr;
+  uint8_t * min_addr;
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  target_vm_addr = (uint8_t*) PHYS_BASE - PGSIZE;
+  min_addr = (uint8_t*) PHYS_BASE - MAX_STACK_SIZE;
+
   if (kpage != NULL)
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      success = install_page (target_vm_addr, kpage, true);
       if (success)
         *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
+      add_new_vm_entry_at(thread_current(),!VF_InDIsk|VF_IsInitial|VF_Write,target_vm_addr);
     }
+  target_vm_addr -= PGSIZE;
+  while(target_vm_addr >= min_addr){
+    add_new_vm_entry_at(thread_current(), !VF_InDIsk|!VF_IsInitial|VF_Write,target_vm_addr);
+    target_vm_addr -= PGSIZE;
+  }
   return success;
 }
 
@@ -743,3 +754,5 @@ install_page (void *upage, void *kpage, bool writable)
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
+
+

@@ -5,6 +5,8 @@
 #include "userprog/syscall.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -126,6 +128,7 @@ page_fault (struct intr_frame *f)
   bool not_present;  /* True: not-present page, false: writing r/o page. */
   bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
+  bool isHandled = false;
   void *fault_addr;  /* Fault address. */
 
   /* Obtain faulting address, the virtual address that was
@@ -135,6 +138,7 @@ page_fault (struct intr_frame *f)
      See [IA32-v2a] "MOV--Move to/from Control Registers" and
      [IA32-v3a] 5.15 "Interrupt 14--Page Fault Exception
      (#PF)". */
+
   asm ("movl %%cr2, %0" : "=r" (fault_addr));
 
   /* Turn interrupts back on (they were only off so that we could
@@ -148,23 +152,65 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+  bool is_user_page = is_user_vaddr(fault_addr);
 
+
+   // printf ("Page fault at %p: %s error %s page in %s context.\n",fault_addr,not_present ? "not present" : "rights violation",write ? "writing" : "reading",user ? "user" : "kernel");
+    //printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
   /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff
    * and copies its former value into eip */
-  if(!user) { // kernel mode
+  struct thread * cur_thre = thread_current();
+  uint32_t *pd = cur_thre->pagedir;
+  bool is_writable_page =pagedir_is_writable(pd,fault_addr);
+  struct vm_entry * found_entry ;//= find_vm_entry_from(cur_thre,fault_addr);
+  if(!user && !is_user_page) { // kernel mode
     f->eip = (void *) f->eax;
     f->eax = 0xffffffff;
     return;
   }
+  else if(!not_present && !is_writable_page && write){// instruction (null part) try write pt-write-code2
+    sys_exit(-1);
+  }
+  else if(!(found_entry = find_vm_entry_from(cur_thre,fault_addr))){ //invalid access
+    kill(f);
+  }
+  bool is_page_initialize = found_entry->flags&VF_IsInitial;
+  if(!user && is_user_page && !is_page_initialize){
+    vm_install_new_page(thread_current(),found_entry);
+    isHandled = true;
+  }
+  else if(!(found_entry->flags&VF_IsInitial) && write){
+    vm_install_new_page(thread_current(),found_entry);
+    isHandled = true;
+  }
+  else if(!(found_entry->flags&VF_IsInitial) && !write){
+    sys_exit(-1);
+  }
 
+  /*struct vm_entry * target_entry = find_vm_entry_from(thread_current(),fault_addr);
+  if(!isHandled && !(target_entry->flags & VF_IsInitial)){
+    printf("install new pages");
+    bool is_install_success = vm_install_new_page(thread_current(),target_entry);
+    if( is_install_success){
+        isHandled = true;
+    }
+  }*/
+
+  if(!isHandled){
+    printf ("Page fault at %p: %s error %s page in %s context.\n",
+            fault_addr,
+            not_present ? "not present" : "rights violation",
+            write ? "writing" : "reading",
+            user ? "user" : "kernel");
+    printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
+    kill (f);
+  }
+  else{
+    return;
+  }
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
-  kill (f);
 }
+
 
