@@ -618,37 +618,44 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
-  file_seek (file, ofs);
+  //file_seek (file, ofs);
+  off_t page_file_offset = ofs;
   while (read_bytes > 0 || zero_bytes > 0)
     {
       /* Calculate how to fill this page.
          We will read PAGE_READ_BYTES bytes from FILE
          and zero the final PAGE_ZERO_BYTES bytes. */
+
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
+      struct vm_entry * target_entry = add_new_vm_entry_at(thread_current(),PAGE_FILE_INDISK,upage);
+      target_entry->swap_file = file;
+      target_entry->swap_file_offset = page_file_offset;
+      target_entry->file_left_size = page_read_bytes;
+      target_entry->is_file_writable = writable;
+      page_file_offset += page_read_bytes;
 
       /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
+      //uint8_t *kpage = palloc_get_page (PAL_USER);
 
-      if (kpage == NULL){
-          return false;
-        }
+      //if (kpage == NULL){
+      //    return false;
+      //  }
 
       /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false;
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+      //if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+      //  {
+      //    palloc_free_page (kpage);
+      //    return false;
+      //  }
+      //memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable))
-        {
-          palloc_free_page (kpage);
-          return false;
-        }
-      //add_new_vm_entry_at(thread_current(),(VF_InDIsk | VF_IsInitial | VF_Write),upage);
+      //if (!install_page (upage, kpage, writable))
+      //  {
+      //    palloc_free_page (kpage);
+      //    return false;
+      //  }
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
@@ -725,11 +732,11 @@ setup_stack (void **esp)
         *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
-      add_new_vm_entry_at(thread_current(),!VF_IsFile|VF_IsInitial|VF_Write|VF_InMemory,target_vm_addr);
+      add_new_vm_entry_at(thread_current(),PAGE_STACK_INMEM,target_vm_addr);
     }
   target_vm_addr -= PGSIZE;
   while(target_vm_addr >= min_addr){
-    add_new_vm_entry_at(thread_current(), !VF_IsFile|!VF_IsInitial|VF_Write|!VF_InMemory,target_vm_addr);
+    add_new_vm_entry_at(thread_current(), PAGE_STACK_UNINIT,target_vm_addr);
     target_vm_addr -= PGSIZE;
   }
   return success;

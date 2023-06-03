@@ -5,9 +5,10 @@ vmpath=./build/tests/vm/
 filesyspath=./build/tests/filesys/base/
 samplePath=../tests/vm/sample.txt
 
-targetProg=pt-grow-stk-sc
+targetProg=page-linear
 
 pintos-mkdisk filesys.dsk --filesys-size=2
+pintos-mkdisk swap.dsk --swap-size=16
 pintos -f -q
 
 

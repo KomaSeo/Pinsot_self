@@ -140,7 +140,6 @@ page_fault (struct intr_frame *f)
      (#PF)". */
 
   asm ("movl %%cr2, %0" : "=r" (fault_addr));
-
   /* Turn interrupts back on (they were only off so that we could
      be assured of reading CR2 before it changed). */
   intr_enable ();
@@ -154,6 +153,15 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
   bool is_user_page = is_user_vaddr(fault_addr);
 
+  if(user && fault_addr == NULL){
+    printf("user try to access NULL.\n");
+    sys_exit(-1);
+  }
+  if(!user && fault_addr == NULL){
+    printf("kernel try to access NULL. Should be fixed\n");
+    printf("fault addr : %x, eip : %x\n",fault_addr,f->eip);
+    kill(f);
+  }
 
   //printf ("Page fault at %p: %s error %s page in %s context.\n",fault_addr,not_present ? "not present" : "rights violation",write ? "writing" : "reading",user ? "user" : "kernel");printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
   /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff
@@ -167,6 +175,10 @@ page_fault (struct intr_frame *f)
     f->eax = 0xffffffff;
     return;
   }
+  else if(!user && is_user_page){
+    printf("unhandled user page at kernel code : no way to recover this because we don't have intr_frame of user. should be fixed\n");
+    sys_exit(-1);
+  }
   else if(user && fault_addr >= PHYS_BASE){
     sys_exit(-1);
   }
@@ -174,21 +186,42 @@ page_fault (struct intr_frame *f)
     sys_exit(-1);
   }
   else if(!(found_entry = find_vm_entry_from(cur_thre,fault_addr))){ //invalid access
+    printf("Can't find vm_entry - target_Addr : %x\n",fault_addr);
     kill(f);
   }
-  bool is_page_initialize = found_entry->flags&VF_IsInitial;
-  bool is_upper_stack  = fault_addr >= f->esp - 32;
-  bool is_stack_need = !is_page_initialize && is_upper_stack;
-  if(!user && is_user_page && !is_page_initialize && is_upper_stack){
-    vm_install_new_page(thread_current(),found_entry);
-    isHandled = true;
-  }
-  else if(!is_page_initialize&& is_upper_stack){
-    vm_install_new_page(thread_current(),found_entry);
-    isHandled = true;
-  }
-  else if(!is_page_initialize && !is_upper_stack){
-    sys_exit(-1);
+  bool alloc_result;
+  bool retry_alloc_result;
+  bool is_upper_stack = fault_addr >= f->esp -32;
+  switch(found_entry->entry_status){
+    case PAGE_STACK_SWAPPED:
+      vm_swap_in_page(thread_current(),found_entry);
+      break;
+    case PAGE_STACK_UNINIT:
+      if(is_upper_stack){
+        alloc_result = vm_handle_stack_alloc(thread_current(),f,fault_addr,1);
+        if(alloc_result == false){
+          printf("stack_alloc_fail at pagefault_PAGE_STACK_UNINIT\N");
+          print_entry_info(found_entry);
+          sys_exit(-1);
+        }
+        isHandled = true;
+      }
+      break;
+    case PAGE_FILE_INDISK:
+      alloc_result =vm_swap_in_page(thread_current(),found_entry);
+      if(alloc_result == false){
+        vm_swap_out_LRU(thread_current());
+        retry_alloc_result = vm_swap_in_page(thread_current(),found_entry);
+        if(retry_alloc_result == false){
+          printf("stack_alloc_fail at pagefault_PAGE_FILE_INDISK\N");
+          print_entry_info(found_entry);
+          sys_exit(-1);
+        }
+      }
+      isHandled = true;
+      break;
+    default:
+      printf("unexpected status at page fault\n");
   }
 
   /*struct vm_entry * target_entry = find_vm_entry_from(thread_current(),fault_addr);
@@ -202,6 +235,7 @@ page_fault (struct intr_frame *f)
 
 
   if(!isHandled){
+    print_entry_info(found_entry);
     printf ("Page fault at %p: %s error %s page in %s context.\n",
             fault_addr,
             not_present ? "not present" : "rights violation",
