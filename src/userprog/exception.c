@@ -155,8 +155,7 @@ page_fault (struct intr_frame *f)
   bool is_user_page = is_user_vaddr(fault_addr);
 
 
-   // printf ("Page fault at %p: %s error %s page in %s context.\n",fault_addr,not_present ? "not present" : "rights violation",write ? "writing" : "reading",user ? "user" : "kernel");
-    //printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
+  //printf ("Page fault at %p: %s error %s page in %s context.\n",fault_addr,not_present ? "not present" : "rights violation",write ? "writing" : "reading",user ? "user" : "kernel");printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
   /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff
    * and copies its former value into eip */
   struct thread * cur_thre = thread_current();
@@ -168,6 +167,9 @@ page_fault (struct intr_frame *f)
     f->eax = 0xffffffff;
     return;
   }
+  else if(user && fault_addr >= PHYS_BASE){
+    sys_exit(-1);
+  }
   else if(!not_present && !is_writable_page && write){// instruction (null part) try write pt-write-code2
     sys_exit(-1);
   }
@@ -175,15 +177,17 @@ page_fault (struct intr_frame *f)
     kill(f);
   }
   bool is_page_initialize = found_entry->flags&VF_IsInitial;
-  if(!user && is_user_page && !is_page_initialize){
+  bool is_upper_stack  = fault_addr >= f->esp - 32;
+  bool is_stack_need = !is_page_initialize && is_upper_stack;
+  if(!user && is_user_page && !is_page_initialize && is_upper_stack){
     vm_install_new_page(thread_current(),found_entry);
     isHandled = true;
   }
-  else if(!(found_entry->flags&VF_IsInitial) && write){
+  else if(!is_page_initialize&& is_upper_stack){
     vm_install_new_page(thread_current(),found_entry);
     isHandled = true;
   }
-  else if(!(found_entry->flags&VF_IsInitial) && !write){
+  else if(!is_page_initialize && !is_upper_stack){
     sys_exit(-1);
   }
 
@@ -195,6 +199,7 @@ page_fault (struct intr_frame *f)
         isHandled = true;
     }
   }*/
+
 
   if(!isHandled){
     printf ("Page fault at %p: %s error %s page in %s context.\n",

@@ -141,7 +141,7 @@ syscall_handler (struct intr_frame *f)
     {
       const char* filename;
       int return_code;
-      
+
       memread_user(f->esp + 4, &filename,ptrsize);
 
       return_code = sys_open(filename);
@@ -168,6 +168,10 @@ syscall_handler (struct intr_frame *f)
       memread_user(f->esp + 4, &fd, intsize);
       memread_user(f->esp + 8, &buffer, ptrsize);
       memread_user(f->esp + 12, &size, sizek);
+      bool handle_result = vm_handle_stack_alloc(thread_current(),f,buffer,size);
+      if(!handle_result){
+        sys_exit(-1);
+      }
 
       return_code = sys_read(fd, buffer, size);
       f->eax = return_code;
@@ -241,7 +245,7 @@ void sys_exit(int status) {
   struct thread *current = thread_current ();
   printf("%s: exit(%d)\n", current->name, status);
 
- 
+
   struct process_control_block *pcb = current->pcb;
   if(pcb != NULL) {
     pcb->exited = 1;
@@ -435,6 +439,8 @@ int sys_write(int fd, const void *buffer, unsigned size) {
 }
 
 /****************** Helper Functions on Memory Access ********************/
+
+
 static void
 check_user (const uint8_t *uaddr) {
   // check uaddr range or segfaults
@@ -445,7 +451,7 @@ check_user (const uint8_t *uaddr) {
 
 static int32_t
 get_user (const uint8_t *uaddr) {
-  int result; 
+  int result;
   if (! ((void*)uaddr < PHYS_BASE)) {
       result = -1;
 	  return result;
@@ -479,7 +485,7 @@ memread_user (void *src, void *dst, size_t bytes)
     if(value != -1) {
 		*(char*)(dst + i) = value & 0xff;
 	}
-	else{  
+	else{
 		fail_invalid_access();
 	}
   }
@@ -497,7 +503,7 @@ find_file_desc(struct thread *t, int fd)
     return NULL;
   }
 
- 
+
   bool empty = list_empty(&t -> file_descriptors);
   if (!empty) {
     struct list_elem *e = list_begin(&t->file_descriptors);

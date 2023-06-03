@@ -102,6 +102,7 @@ struct thread
     struct list locks;                  /* List of locks the thread holds (for multiple donations) */
 
     struct hash vm_list;
+    struct hash_iterator vm_LRU_iterator;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

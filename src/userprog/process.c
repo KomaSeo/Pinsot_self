@@ -725,11 +725,11 @@ setup_stack (void **esp)
         *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
-      add_new_vm_entry_at(thread_current(),!VF_InDIsk|VF_IsInitial|VF_Write,target_vm_addr);
+      add_new_vm_entry_at(thread_current(),!VF_IsFile|VF_IsInitial|VF_Write|VF_InMemory,target_vm_addr);
     }
   target_vm_addr -= PGSIZE;
   while(target_vm_addr >= min_addr){
-    add_new_vm_entry_at(thread_current(), !VF_InDIsk|!VF_IsInitial|VF_Write,target_vm_addr);
+    add_new_vm_entry_at(thread_current(), !VF_IsFile|!VF_IsInitial|VF_Write|!VF_InMemory,target_vm_addr);
     target_vm_addr -= PGSIZE;
   }
   return success;
