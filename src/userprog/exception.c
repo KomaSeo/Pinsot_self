@@ -201,7 +201,7 @@ page_fault (struct intr_frame *f)
     case PAGE_STACK_UNINIT:
       if(is_upper_stack){
         //print_entry_info(found_entry);
-        alloc_result = vm_handle_stack_alloc(thread_current(),f,fault_addr,1);
+        alloc_result = vm_handle_syscall_alloc(thread_current(),f,fault_addr,1);
         if(alloc_result == false){
           printf("stack_alloc_fail at pagefault_PAGE_STACK_UNINIT\N");
           //print_entry_info(found_entry);

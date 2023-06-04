@@ -168,8 +168,9 @@ syscall_handler (struct intr_frame *f)
       memread_user(f->esp + 4, &fd, intsize);
       memread_user(f->esp + 8, &buffer, ptrsize);
       memread_user(f->esp + 12, &size, sizek);
-      bool handle_result = vm_handle_stack_alloc(thread_current(),f,buffer,size);
+      bool handle_result = vm_handle_syscall_alloc(thread_current(),f,buffer,size);
       if(!handle_result){
+        printf("handle fault\n");
         sys_exit(-1);
       }
 

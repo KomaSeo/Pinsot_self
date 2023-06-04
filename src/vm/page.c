@@ -291,14 +291,8 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
 
 
 
-
-
 /* above is region for swap handling*/
-bool vm_handle_stack_alloc(struct thread * target_thread, struct intr_frame *f, uint8_t* addr, uint32_t byte_to_handle){//TODO need to imple auto swap out, swap in.
-  if(pg_round_down(addr)==NULL){
-    printf("vm_handle_stack_alloc_failed: reason - passed address is NULL, which is not stack address\n");
-    return false;
-  }
+bool vm_handle_syscall_alloc(struct thread * target_thread, struct intr_frame *f, uint8_t* addr, uint32_t byte_to_handle){//TODO need to imple auto swap out, swap in.
   uint8_t* target_addr = pg_round_down(addr);
   uint8_t* max_addr = pg_round_down(addr + byte_to_handle-1);
   while(target_addr <= max_addr){
@@ -322,6 +316,12 @@ bool vm_handle_stack_alloc(struct thread * target_thread, struct intr_frame *f, 
         vm_swap_in_page(target_thread,found_entry);
         break;
       case PAGE_STACK_INMEM:
+        break;
+      case PAGE_FILE_INDISK:
+        vm_swap_in_page(target_thread,found_entry);
+        break;
+      case PAGE_FILE_INMEM:
+        //do nothing;
         break;
       default:
         return false;
@@ -388,7 +388,7 @@ void vm_destroy(struct hash_elem *e, void * aux UNUSED){
       palloc_free_page(pagedir_get_page(thread_current()->pagedir, target->vm_address));
       pagedir_clear_page(thread_current()->pagedir, target->vm_address);
     }*/
-    //free(target);
+    free(target);
 }
 unsigned vm_hash_func (struct hash_elem *e, void *aux UNUSED){
     struct vm_entry * target = hash_entry(e, struct vm_entry, vm_list_elem);

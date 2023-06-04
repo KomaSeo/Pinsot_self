@@ -47,7 +47,7 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
 
 
 struct vm_entry * add_new_vm_entry_at(struct thread * target, enum page_status status, uint32_t vm_address);
-bool vm_handle_stack_alloc(struct thread * target_thread, struct intr_frame *f, uint8_t* addr, uint32_t byte_to_handle);
+bool vm_handle_syscall_alloc(struct thread * target_thread, struct intr_frame *f, uint8_t* addr, uint32_t byte_to_handle);
 bool vm_install_new_stack(struct thread * target,struct vm_entry * target_entry);
 struct vm_entry * find_entry(uint32_t vm_address, struct hash * vm_list);
 struct vm_entry * get_new_vm_entry(enum page_status , uint32_t );
