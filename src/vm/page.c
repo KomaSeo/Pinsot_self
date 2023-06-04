@@ -10,6 +10,12 @@
 #include <hash.h>
 
 static struct swap_pool * page_swap_pool;
+bool is_status_inmem(enum page_status);
+bool is_status_file(enum page_status);
+bool is_status_inblock(enum page_status);
+bool is_entry_inmem(struct vm_entry *);
+bool is_entry_file(struct vm_entry *);
+bool is_entry_inblock(struct vm_entry *);
 
 bool is_status_inmem(enum page_status status){
   return status == PAGE_FILE_INMEM||status == PAGE_STACK_INMEM;
@@ -37,6 +43,9 @@ void print_status(enum page_status status){
       break;
     case PAGE_FILE_INMEM:
       _str = "PAGE_FILE_INMEM";
+      break;
+    case PAGE_FILE_SWAPPED:
+      _str = "PAGE_FILE_SWAPPED";
       break;
     case PAGE_STACK_INMEM:
       _str = "PAGE_STACK_INMEM";
@@ -75,8 +84,9 @@ void vm_swap_init(){//should be called lazily
   if(page_swap_pool == NULL){
     page_swap_pool = malloc(sizeof(struct swap_pool));
     block_print_stats();
-    struct block * target_block = block_get_role(BLOCK_SWAP);
+    struct block * target_block = block_get_by_name("hdc");
     ASSERT(target_block);
+    block_set_role(BLOCK_SWAP,target_block);
     block_sector_t target_block_size = block_size(target_block);
     page_swap_pool->target_block = target_block;
     page_swap_pool->used_map = bitmap_create(target_block_size);
@@ -97,12 +107,12 @@ bool vm_swap_out_LRU(struct thread * target_thread){
   }
   while(true){
     struct vm_entry * target_entry = hash_entry(iter_elem,struct vm_entry, vm_list_elem);
-    pagedir_is_accessed(target_thread->pagedir,target_entry->vm_address);
     if(is_entry_inmem(target_entry)){
       if(pagedir_is_accessed(target_thread->pagedir,target_entry->vm_address)){
         pagedir_set_accessed(target_thread->pagedir,target_entry->vm_address,false);
       }
       else{
+        //print_entry_info(target_entry);
         return vm_swap_out_page(target_thread,target_entry);
       }
     }
@@ -123,10 +133,13 @@ bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_en
     printf("In vm swap out page : finding physical address of target in pagedirectory is failed\n");
     return false;
   }
-  struct swap_pool * target_pool = target_entry->stored_swap_pool;
+  ASSERT(target_entry);
+  struct swap_pool * target_pool = NULL;
   switch(target_entry->entry_status){
     case PAGE_STACK_INMEM:
       vm_swap_init();
+      target_pool = page_swap_pool;
+      ASSERT(target_pool);
       block_sector_t need_block_size = PGSIZE/ BLOCK_SECTOR_SIZE;
       lock_acquire(target_pool->swap_lock);
       block_sector_t block_index = bitmap_scan_and_flip(target_pool->used_map,0,need_block_size,0);
@@ -145,9 +158,29 @@ bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_en
       target_entry->entry_status = PAGE_STACK_SWAPPED;
       break;
     case PAGE_FILE_INMEM:
-      if(pagedir_is_dirty(target_thread->pagedir,target_entry->vm_address))
-        file_write_at(target_entry->swap_file,target_entry->vm_address,target_entry->file_left_size,target_entry->swap_file_offset);
-      target_entry->entry_status = PAGE_FILE_INDISK;
+      if(target_entry->is_file_writable){
+        vm_swap_init();
+        target_pool = page_swap_pool;
+        block_sector_t need_block_size = PGSIZE/ BLOCK_SECTOR_SIZE;
+        lock_acquire(target_pool->swap_lock);
+        block_sector_t block_index = bitmap_scan_and_flip(target_pool->used_map,0,need_block_size,0);
+        lock_release(target_pool->swap_lock);
+        if(block_index == BITMAP_ERROR){
+          return false;
+        }
+        else {
+          int i;
+          for(i = 0; i < need_block_size;i++){
+            block_write(target_pool->target_block,block_index + i,targetAddr + BLOCK_SECTOR_SIZE * i);
+          }
+          target_entry->stored_swap_pool = page_swap_pool;
+          target_entry->stored_swap_sector = block_index;
+        }
+        target_entry->entry_status = PAGE_FILE_SWAPPED;
+      }
+      else{
+        target_entry->entry_status = PAGE_FILE_INDISK;
+      }
       break;
     default:
      printf("unexpected entry status at swap out- ");
@@ -179,6 +212,20 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       writable = target_entry->is_file_writable;
       break;
     }
+    case PAGE_FILE_SWAPPED:{
+      struct swap_pool * target_pool = target_entry->stored_swap_pool;
+      block_sector_t target_block_sector = target_entry->stored_swap_sector;
+      struct block * target_block = target_pool->target_block;
+      block_read(target_block,target_block_sector,ppage);
+      block_read(target_block,target_block_sector+1,ppage+BLOCK_SECTOR_SIZE);
+      lock_acquire(target_pool->swap_lock);
+      int need_block_size = PGSIZE/BLOCK_SECTOR_SIZE;
+      bitmap_set_multiple(target_pool->used_map,target_block_sector,need_block_size,0);
+      lock_release(target_pool->swap_lock);
+      target_entry->entry_status = PAGE_FILE_INMEM;
+      writable = target_entry->is_file_writable;
+      break;
+    }
     case PAGE_STACK_SWAPPED:{
       struct swap_pool * target_pool = target_entry->stored_swap_pool;
       block_sector_t target_block_sector = target_entry->stored_swap_sector;
@@ -186,7 +233,8 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       block_read(target_block,target_block_sector,ppage);
       block_read(target_block,target_block_sector+1,ppage+BLOCK_SECTOR_SIZE);
       lock_acquire(target_pool->swap_lock);
-      bitmap_set_multiple(target_pool->used_map,target_block_sector,2,0);
+      int need_block_size = PGSIZE/BLOCK_SECTOR_SIZE;
+      bitmap_set_multiple(target_pool->used_map,target_block_sector,need_block_size,0);
       lock_release(target_pool->swap_lock);
       target_entry->entry_status = PAGE_STACK_INMEM;
       writable = true;
@@ -235,8 +283,12 @@ bool vm_handle_stack_alloc(struct thread * target_thread, struct intr_frame *f, 
       case PAGE_STACK_SWAPPED:
         vm_swap_in_page(target_thread,found_entry);
         break;
+      case PAGE_STACK_INMEM:
+        //DO NOTHING:
+        break;
       default:
         printf("unexpected entry status at vm_handle_stack_alloc\n");
+        print_entry_info(found_entry);
         return false;
         break;
     }

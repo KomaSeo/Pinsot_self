@@ -13,6 +13,7 @@ enum page_status {
   PAGE_STACK_SWAPPED,
   PAGE_FILE_INDISK,
   PAGE_FILE_INMEM,
+  PAGE_FILE_SWAPPED
 };
 
 

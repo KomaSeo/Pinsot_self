@@ -634,7 +634,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       target_entry->file_left_size = page_read_bytes;
       target_entry->is_file_writable = writable;
       page_file_offset += page_read_bytes;
-
       /* Get a page of memory. */
       //uint8_t *kpage = palloc_get_page (PAL_USER);
 
