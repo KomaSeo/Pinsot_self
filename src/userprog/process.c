@@ -312,6 +312,7 @@ process_exit (void)
     file_close(cur->executing_file);
   }
 
+
   // Unblock the waiting parent process, if any, from wait().
   // now its resource (pcb on page, etc.) can be freed.
   sema_up (&cur->pcb->sema_wait);

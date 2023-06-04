@@ -5,7 +5,7 @@ vmpath=./build/tests/vm/
 filesyspath=./build/tests/filesys/base/
 samplePath=../tests/vm/sample.txt
 
-##targetProg=pt-grow-stack
+#targetProg=pt-grow-stack
 targetProg=page-linear
 
 rm ./swap.dsk

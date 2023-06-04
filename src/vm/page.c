@@ -60,7 +60,7 @@ void print_status(enum page_status status){
       _str = "unexpected state";
       break;
   }
-  printf("status : %s\n", _str);
+  printf("status : %s, %d\n", _str, status);
 }
 void print_entry_info(struct vm_entry * entry){
   printf("-----ENTRY_INFO -----\n");
@@ -86,7 +86,16 @@ void vm_swap_init(){//should be called lazily
     block_print_stats();
     struct block * target_block = block_get_role(BLOCK_SWAP);
     if(target_block == NULL){
-      target_block = block_get_by_name("hdc");
+      struct block * find_block = block_first();
+      while(target_block == NULL){
+        if(block_type(find_block) == BLOCK_SWAP){
+          block_set_role(BLOCK_SWAP,find_block);
+          target_block = find_block;
+        }
+        else{
+          find_block = block_next(find_block);
+        }
+      }
     }
     ASSERT(target_block);
     block_set_role(BLOCK_SWAP,target_block);
@@ -321,12 +330,16 @@ struct vm_entry * add_new_vm_entry_at(struct thread * target, enum page_status s
     struct vm_entry * new_entry = get_new_vm_entry(status, vm_address);
     struct hash* vm = &target->vm_list;
     hash_insert(vm, &new_entry->vm_list_elem);
+    if(status != PAGE_STACK_UNINIT && status != PAGE_FILE_INDISK){
+      print_entry_info(new_entry);
+    }
     return new_entry;
 }
 
 struct vm_entry * get_new_vm_entry(enum page_status status, uint32_t vm_address){
     uint32_t maskedAddress = (uint32_t)pg_round_down((uint8_t*)vm_address);
     struct vm_entry * entry = malloc(sizeof(struct vm_entry));
+    memset(entry,0,sizeof(struct vm_entry));
     ASSERT(entry);
     if(entry == (struct vm_entry*)NULL){
       return entry;
