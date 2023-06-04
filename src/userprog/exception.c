@@ -159,7 +159,7 @@ page_fault (struct intr_frame *f)
   }
   if(!user && fault_addr == NULL){
     printf("kernel try to access NULL. Should be fixed\n");
-    printf("fault addr : %x, eip : %x\n",fault_addr,f->eip);
+    //printf("fault addr : %x, eip : %x\n",fault_addr,f->eip);
     kill(f);
   }
   //printf ("Page fault at %p: %s error %s page in %s context.\n",fault_addr,not_present ? "not present" : "rights violation",write ? "writing" : "reading",user ? "user" : "kernel");printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
@@ -194,11 +194,11 @@ page_fault (struct intr_frame *f)
   switch(found_entry->entry_status){
     case PAGE_STACK_UNINIT:
       if(is_upper_stack){
-        print_entry_info(found_entry);
+        //print_entry_info(found_entry);
         alloc_result = vm_handle_stack_alloc(thread_current(),f,fault_addr,1);
         if(alloc_result == false){
           printf("stack_alloc_fail at pagefault_PAGE_STACK_UNINIT\N");
-          print_entry_info(found_entry);
+          //print_entry_info(found_entry);
           sys_exit(-1);
         }
         isHandled = true;
@@ -212,7 +212,7 @@ page_fault (struct intr_frame *f)
         vm_swap_out_LRU(thread_current());
         retry_alloc_result = vm_swap_in_page(thread_current(),found_entry);
         if(retry_alloc_result == false){
-          print_entry_info(found_entry);
+          //print_entry_info(found_entry);
           sys_exit(-1);
         }
       }
@@ -220,7 +220,7 @@ page_fault (struct intr_frame *f)
       break;
     default:
       printf("unexpected status at page fault\n");
-      print_entry_info(found_entry);
+      //print_entry_info(found_entry);
       break;
   }
 
@@ -235,7 +235,7 @@ page_fault (struct intr_frame *f)
 
 
   if(!isHandled){
-    print_entry_info(found_entry);
+    //print_entry_info(found_entry);
     printf ("Page fault at %p: %s error %s page in %s context.\n",
             fault_addr,
             not_present ? "not present" : "rights violation",

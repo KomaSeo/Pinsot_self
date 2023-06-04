@@ -83,7 +83,6 @@ void print_entry_info(struct vm_entry * entry){
 void vm_swap_init(){//should be called lazily
   if(page_swap_pool == NULL){
     page_swap_pool = malloc(sizeof(struct swap_pool));
-    block_print_stats();
     struct block * target_block = block_get_role(BLOCK_SWAP);
     if(target_block == NULL){
       struct block * find_block = block_first();
@@ -125,7 +124,6 @@ bool vm_swap_out_LRU(struct thread * target_thread){
         pagedir_set_accessed(target_thread->pagedir,target_entry->vm_address,false);
       }
       else{
-        //print_entry_info(target_entry);
         return vm_swap_out_page(target_thread,target_entry);
       }
     }
@@ -307,11 +305,8 @@ bool vm_handle_stack_alloc(struct thread * target_thread, struct intr_frame *f, 
         vm_swap_in_page(target_thread,found_entry);
         break;
       case PAGE_STACK_INMEM:
-        //DO NOTHING:
         break;
       default:
-        printf("unexpected entry status at vm_handle_stack_alloc\n");
-        print_entry_info(found_entry);
         return false;
         break;
     }
