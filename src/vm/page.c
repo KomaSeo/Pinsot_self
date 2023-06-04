@@ -90,6 +90,7 @@ void vm_swap_init(){//should be called lazily
     block_sector_t target_block_size = block_size(target_block);
     page_swap_pool->target_block = target_block;
     page_swap_pool->used_map = bitmap_create(target_block_size);
+    lock_init(page_swap_pool->swap_lock);
   }
 }
 bool vm_swap_out_LRU(struct thread * target_thread){
