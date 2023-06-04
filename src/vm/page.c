@@ -104,8 +104,23 @@ void vm_swap_init(){//should be called lazily
     lock_init(&page_swap_pool->swap_lock);
   }
 }
+
+bool vm_swap_out_LRU_Global(){
+    struct list_elem *e;
+    for (e = list_begin (&all_list); e != list_end (&all_list);e = list_next (e)){
+      struct thread *target_thread = list_entry (e, struct thread, allelem);
+      if(vm_swap_out_LRU(target_thread)){
+        return true;
+      }
+    }
+    return false;
+}
+
 bool vm_swap_out_LRU(struct thread * target_thread){
   struct hash_elem * iter_elem;
+  if(hash_size(&target_thread->vm_list) == 0){
+    return false;
+  }
   if(target_thread->vm_LRU_iterator.hash ==NULL){
     hash_first(&target_thread->vm_LRU_iterator,&target_thread->vm_list);
     iter_elem = hash_cur(&target_thread->vm_LRU_iterator);
@@ -117,7 +132,8 @@ bool vm_swap_out_LRU(struct thread * target_thread){
     hash_first(&target_thread->vm_LRU_iterator,&target_thread->vm_list);
     iter_elem = hash_cur(&target_thread->vm_LRU_iterator);
   }
-  while(true){
+  int roll_index = 0;
+  while(roll_index < 2){
     struct vm_entry * target_entry = hash_entry(iter_elem,struct vm_entry, vm_list_elem);
     if(is_entry_inmem(target_entry)){
       if(pagedir_is_accessed(target_thread->pagedir,target_entry->vm_address)){
@@ -131,6 +147,7 @@ bool vm_swap_out_LRU(struct thread * target_thread){
     if(iter_elem == NULL){
       hash_first(&target_thread->vm_LRU_iterator,&target_thread->vm_list);
       iter_elem = hash_cur(&target_thread->vm_LRU_iterator);
+      roll_index += 1;
     }
   }
   return false;

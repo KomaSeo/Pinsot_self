@@ -176,6 +176,12 @@ page_fault (struct intr_frame *f)
   }
   else if(!user && is_user_page){
     printf("unhandled user page at kernel code : no way to recover this because we don't have intr_frame of user. should be fixed\n");
+    printf ("Page fault at %p: %s error %s page in %s context.\n",
+            fault_addr,
+            not_present ? "not present" : "rights violation",
+            write ? "writing" : "reading",
+            user ? "user" : "kernel");
+    printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
     sys_exit(-1);
   }
   else if(user && fault_addr >= PHYS_BASE){

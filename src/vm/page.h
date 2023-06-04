@@ -38,6 +38,7 @@ struct vm_entry{
     bool is_file_writable;
 
 };
+bool vm_swap_out_LRU_Global();
 void vm_swap_init();
 bool vm_swap_out_LRU(struct thread * target_thread);
 bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_entry);

@@ -529,8 +529,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
+  if (!setup_stack (esp)){
     goto finish;
+  }
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
@@ -725,6 +726,10 @@ setup_stack (void **esp)
   target_vm_addr = (uint8_t*) PHYS_BASE - PGSIZE;
   min_addr = (uint8_t*) PHYS_BASE - MAX_STACK_SIZE;
 
+  if (kpage == NULL){
+    vm_swap_out_LRU_Global();
+    kpage = palloc_get_page(PAL_USER|PAL_ZERO);
+  }
   if (kpage != NULL)
     {
       success = install_page (target_vm_addr, kpage, true);
