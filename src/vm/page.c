@@ -102,7 +102,7 @@ void vm_swap_init(){//should be called lazily
     block_sector_t target_block_size = block_size(target_block);
     page_swap_pool->target_block = target_block;
     page_swap_pool->used_map = bitmap_create(target_block_size);
-    lock_init(page_swap_pool->swap_lock);
+    lock_init(&page_swap_pool->swap_lock);
   }
 }
 bool vm_swap_out_LRU(struct thread * target_thread){
@@ -154,9 +154,9 @@ bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_en
       target_pool = page_swap_pool;
       ASSERT(target_pool);
       block_sector_t need_block_size = PGSIZE/ BLOCK_SECTOR_SIZE;
-      lock_acquire(target_pool->swap_lock);
+      lock_acquire(&target_pool->swap_lock);
       block_sector_t block_index = bitmap_scan_and_flip(target_pool->used_map,0,need_block_size,0);
-      lock_release(target_pool->swap_lock);
+      lock_release(&target_pool->swap_lock);
       if(block_index == BITMAP_ERROR){
         return false;
       }
@@ -175,9 +175,9 @@ bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_en
         vm_swap_init();
         target_pool = page_swap_pool;
         block_sector_t need_block_size = PGSIZE/ BLOCK_SECTOR_SIZE;
-        lock_acquire(target_pool->swap_lock);
+        lock_acquire(&target_pool->swap_lock);
         block_sector_t block_index = bitmap_scan_and_flip(target_pool->used_map,0,need_block_size,0);
-        lock_release(target_pool->swap_lock);
+        lock_release(&target_pool->swap_lock);
         if(block_index == BITMAP_ERROR){
           return false;
         }
@@ -231,10 +231,10 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       struct block * target_block = target_pool->target_block;
       block_read(target_block,target_block_sector,ppage);
       block_read(target_block,target_block_sector+1,ppage+BLOCK_SECTOR_SIZE);
-      lock_acquire(target_pool->swap_lock);
+      lock_acquire(&target_pool->swap_lock);
       int need_block_size = PGSIZE/BLOCK_SECTOR_SIZE;
       bitmap_set_multiple(target_pool->used_map,target_block_sector,need_block_size,0);
-      lock_release(target_pool->swap_lock);
+      lock_release(&target_pool->swap_lock);
       target_entry->entry_status = PAGE_FILE_INMEM;
       writable = target_entry->is_file_writable;
       break;
@@ -245,10 +245,10 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       struct block * target_block = target_pool->target_block;
       block_read(target_block,target_block_sector,ppage);
       block_read(target_block,target_block_sector+1,ppage+BLOCK_SECTOR_SIZE);
-      lock_acquire(target_pool->swap_lock);
+      lock_acquire(&target_pool->swap_lock);
       int need_block_size = PGSIZE/BLOCK_SECTOR_SIZE;
       bitmap_set_multiple(target_pool->used_map,target_block_sector,need_block_size,0);
-      lock_release(target_pool->swap_lock);
+      lock_release(&target_pool->swap_lock);
       target_entry->entry_status = PAGE_STACK_INMEM;
       writable = true;
       break;
@@ -274,7 +274,7 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
 
 
 /* above is region for swap handling*/
-bool vm_handle_stack_alloc(struct thread * target_thread, struct intr_frame *f, uint8_t* addr, uint32_t byte_to_handle){
+bool vm_handle_stack_alloc(struct thread * target_thread, struct intr_frame *f, uint8_t* addr, uint32_t byte_to_handle){//TODO need to imple auto swap out, swap in.
   if(pg_round_down(addr)==NULL){
     printf("vm_handle_stack_alloc_failed: reason - passed address is NULL, which is not stack address\n");
     return false;
@@ -290,7 +290,12 @@ bool vm_handle_stack_alloc(struct thread * target_thread, struct intr_frame *f, 
     switch(found_entry->entry_status){
       case PAGE_STACK_UNINIT:{
         bool is_upper_stack  = (addr >= (f->esp - 32));
-        vm_install_new_stack(target_thread,found_entry);
+        if(is_upper_stack){
+          vm_install_new_stack(target_thread,found_entry);
+        }
+        else{
+          return false;
+        }
         break;
       }
       case PAGE_STACK_SWAPPED:
@@ -330,9 +335,6 @@ struct vm_entry * add_new_vm_entry_at(struct thread * target, enum page_status s
     struct vm_entry * new_entry = get_new_vm_entry(status, vm_address);
     struct hash* vm = &target->vm_list;
     hash_insert(vm, &new_entry->vm_list_elem);
-    if(status != PAGE_STACK_UNINIT && status != PAGE_FILE_INDISK){
-      print_entry_info(new_entry);
-    }
     return new_entry;
 }
 
@@ -369,7 +371,7 @@ void vm_destroy(struct hash_elem *e, void * aux UNUSED){
       palloc_free_page(pagedir_get_page(thread_current()->pagedir, target->vm_address));
       pagedir_clear_page(thread_current()->pagedir, target->vm_address);
     }*/
-    free(target);
+    //free(target);
 }
 unsigned vm_hash_func (struct hash_elem *e, void *aux UNUSED){
     struct vm_entry * target = hash_entry(e, struct vm_entry, vm_list_elem);

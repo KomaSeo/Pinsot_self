@@ -13,12 +13,13 @@ enum page_status {
   PAGE_STACK_SWAPPED,
   PAGE_FILE_INDISK,
   PAGE_FILE_INMEM,
-  PAGE_FILE_SWAPPED
+  PAGE_FILE_SWAPPED,
+  PAGE_UNEXPECTED
 };
 
 
 struct swap_pool{
-  struct lock * swap_lock;
+  struct lock swap_lock;
   struct bitmap * used_map;
   struct block * target_block;
 };

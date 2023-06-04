@@ -193,11 +193,11 @@ page_fault (struct intr_frame *f)
   bool is_upper_stack = fault_addr >= f->esp -32;
   switch(found_entry->entry_status){
     case PAGE_STACK_SWAPPED:
-      vm_swap_in_page(thread_current(),found_entry);
       isHandled = true;
       break;
     case PAGE_STACK_UNINIT:
       if(is_upper_stack){
+        print_entry_info(found_entry);
         alloc_result = vm_handle_stack_alloc(thread_current(),f,fault_addr,1);
         if(alloc_result == false){
           printf("stack_alloc_fail at pagefault_PAGE_STACK_UNINIT\N");
