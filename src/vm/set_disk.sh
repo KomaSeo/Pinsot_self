@@ -8,6 +8,7 @@ samplePath=../tests/vm/sample.txt
 ##targetProg=pt-grow-stack
 targetProg=page-linear
 
+rm ./swap.dsk
 pintos-mkdisk filesys.dsk --filesys-size=2
 pintos-mkdisk swap.dsk --swap-size=16
 pintos -f -q

@@ -84,7 +84,10 @@ void vm_swap_init(){//should be called lazily
   if(page_swap_pool == NULL){
     page_swap_pool = malloc(sizeof(struct swap_pool));
     block_print_stats();
-    struct block * target_block = block_get_by_name("hdc");
+    struct block * target_block = block_get_role(BLOCK_SWAP);
+    if(target_block == NULL){
+      block_get_by_name("hdc");
+    }
     ASSERT(target_block);
     block_set_role(BLOCK_SWAP,target_block);
     block_sector_t target_block_size = block_size(target_block);

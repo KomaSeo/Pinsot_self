@@ -195,6 +195,7 @@ page_fault (struct intr_frame *f)
   switch(found_entry->entry_status){
     case PAGE_STACK_SWAPPED:
       vm_swap_in_page(thread_current(),found_entry);
+      isHandled = true;
       break;
     case PAGE_STACK_UNINIT:
       if(is_upper_stack){
@@ -208,12 +209,12 @@ page_fault (struct intr_frame *f)
       }
       break;
     case PAGE_FILE_INDISK:
+    case PAGE_FILE_SWAPPED:
       alloc_result =vm_swap_in_page(thread_current(),found_entry);
       if(alloc_result == false){
         vm_swap_out_LRU(thread_current());
         retry_alloc_result = vm_swap_in_page(thread_current(),found_entry);
         if(retry_alloc_result == false){
-          printf("stack_alloc_fail at pagefault_PAGE_FILE_INDISK\N");
           print_entry_info(found_entry);
           sys_exit(-1);
         }
@@ -222,6 +223,8 @@ page_fault (struct intr_frame *f)
       break;
     default:
       printf("unexpected status at page fault\n");
+      print_entry_info(found_entry);
+      break;
   }
 
   /*struct vm_entry * target_entry = find_vm_entry_from(thread_current(),fault_addr);
