@@ -86,7 +86,7 @@ void vm_swap_init(){//should be called lazily
     block_print_stats();
     struct block * target_block = block_get_role(BLOCK_SWAP);
     if(target_block == NULL){
-      block_get_by_name("hdc");
+      target_block = block_get_by_name("hdc");
     }
     ASSERT(target_block);
     block_set_role(BLOCK_SWAP,target_block);
