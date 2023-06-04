@@ -192,9 +192,6 @@ page_fault (struct intr_frame *f)
   bool retry_alloc_result;
   bool is_upper_stack = fault_addr >= f->esp -32;
   switch(found_entry->entry_status){
-    case PAGE_STACK_SWAPPED:
-      isHandled = true;
-      break;
     case PAGE_STACK_UNINIT:
       if(is_upper_stack){
         print_entry_info(found_entry);
@@ -207,6 +204,7 @@ page_fault (struct intr_frame *f)
         isHandled = true;
       }
       break;
+    case PAGE_STACK_SWAPPED:
     case PAGE_FILE_INDISK:
     case PAGE_FILE_SWAPPED:
       alloc_result =vm_swap_in_page(thread_current(),found_entry);

@@ -215,6 +215,7 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
   }
 
   bool writable;
+  int need_block_size = PGSIZE/BLOCK_SECTOR_SIZE;
   switch(target_entry->entry_status){
     case PAGE_FILE_INDISK:{
       size_t read_length = file_read_at(target_entry->swap_file,ppage,target_entry->file_left_size,target_entry->swap_file_offset);
@@ -229,8 +230,10 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       struct swap_pool * target_pool = target_entry->stored_swap_pool;
       block_sector_t target_block_sector = target_entry->stored_swap_sector;
       struct block * target_block = target_pool->target_block;
-      block_read(target_block,target_block_sector,ppage);
-      block_read(target_block,target_block_sector+1,ppage+BLOCK_SECTOR_SIZE);
+      int i = 0;
+      for(i = 0; i < need_block_size; i ++){
+        block_read(target_block,target_block_sector + i, ppage+BLOCK_SECTOR_SIZE * i);
+      }
       lock_acquire(&target_pool->swap_lock);
       int need_block_size = PGSIZE/BLOCK_SECTOR_SIZE;
       bitmap_set_multiple(target_pool->used_map,target_block_sector,need_block_size,0);
@@ -243,8 +246,10 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       struct swap_pool * target_pool = target_entry->stored_swap_pool;
       block_sector_t target_block_sector = target_entry->stored_swap_sector;
       struct block * target_block = target_pool->target_block;
-      block_read(target_block,target_block_sector,ppage);
-      block_read(target_block,target_block_sector+1,ppage+BLOCK_SECTOR_SIZE);
+      int i = 0;
+      for(i = 0; i < need_block_size; i ++){
+        block_read(target_block,target_block_sector + i, ppage+BLOCK_SECTOR_SIZE * i);
+      }
       lock_acquire(&target_pool->swap_lock);
       int need_block_size = PGSIZE/BLOCK_SECTOR_SIZE;
       bitmap_set_multiple(target_pool->used_map,target_block_sector,need_block_size,0);
@@ -258,7 +263,7 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       return false;
       break;
   }
-  pagedir_set_page(target_thread->pagedir,target_entry->vm_address,ppage,writable);
+      pagedir_set_page(target_thread->pagedir,target_entry->vm_address,ppage,writable);
   return true;
 }
 
