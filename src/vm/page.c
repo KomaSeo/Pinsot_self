@@ -30,7 +30,7 @@ bool is_entry_file(struct vm_entry * entry){
   return is_status_file(entry->entry_status);
 }
 bool is_status_inblock(enum page_status status){
-  return status == PAGE_STACK_SWAPPED|| status == PAGE_FILE_INDISK;
+  return status == PAGE_STACK_SWAPPED|| status == PAGE_FILE_INDISK || status == PAGE_FILE_SWAPPED;
 }
 bool is_entry_inblock(struct vm_entry * entry){
   return is_status_inblock(entry->entry_status);
