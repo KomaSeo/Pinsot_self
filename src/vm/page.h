@@ -18,6 +18,8 @@ enum page_status {
 };
 
 
+
+
 struct swap_pool{
   struct lock swap_lock;
   struct bitmap * used_map;
@@ -36,8 +38,8 @@ struct vm_entry{
     off_t swap_file_offset;
     off_t file_left_size;
     bool is_file_writable;
-
 };
+
 bool vm_swap_out_LRU_Global();
 void vm_swap_init();
 bool vm_swap_out_LRU(struct thread * target_thread);
@@ -46,6 +48,7 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
 
 
 
+bool vm_check_stack_vm_entry(struct thread * target_thread, struct intr_frame * f, uint8_t* addr, uint32_t byte_to_handle);
 struct vm_entry * add_new_vm_entry_at(struct thread * target, enum page_status status, uint32_t vm_address);
 bool vm_handle_syscall_alloc(struct thread * target_thread, struct intr_frame *f, uint8_t* addr, uint32_t byte_to_handle);
 bool vm_install_new_stack(struct thread * target,struct vm_entry * target_entry);

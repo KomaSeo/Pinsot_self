@@ -3,6 +3,7 @@
 
 #include "threads/thread.h"
 #include "threads/synch.h"
+#define MAX_STACK_SIZE 0x800000
 
 typedef int pid_t;
 

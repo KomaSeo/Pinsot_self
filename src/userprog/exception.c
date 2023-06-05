@@ -6,7 +6,10 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/process.h"
 #include "vm/page.h"
+
+
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -159,9 +162,9 @@ page_fault (struct intr_frame *f)
   }
   if(!user && fault_addr == NULL){
     printf("kernel try to access NULL. Should be fixed\n");
-    //printf("fault addr : %x, eip : %x\n",fault_addr,f->eip);
     kill(f);
   }
+
   //printf ("Page fault at %p: %s error %s page in %s context.\n",fault_addr,not_present ? "not present" : "rights violation",write ? "writing" : "reading",user ? "user" : "kernel");printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
   /* (3.1.5) a page fault in the kernel merely sets eax to 0xffffffff
    * and copies its former value into eip */
@@ -169,19 +172,17 @@ page_fault (struct intr_frame *f)
   uint32_t *pd = cur_thre->pagedir;
   bool is_writable_page =pagedir_is_writable(pd,fault_addr);
   struct vm_entry * found_entry ;//= find_vm_entry_from(cur_thre,fault_addr);
+  if(user && fault_addr >= PHYS_BASE - MAX_STACK_SIZE){
+    if(!vm_check_stack_vm_entry(cur_thre,f,fault_addr,1)){
+      sys_exit(-1);
+    }
+  }
   if(!user && !is_user_page) { // kernel mode
     f->eip = (void *) f->eax;
     f->eax = 0xffffffff;
     return;
   }
   else if(!user && is_user_page){
-    printf("unhandled user page at kernel code : no way to recover this because we don't have intr_frame of user. should be fixed\n");
-    printf ("Page fault at %p: %s error %s page in %s context.\n",
-            fault_addr,
-            not_present ? "not present" : "rights violation",
-            write ? "writing" : "reading",
-            user ? "user" : "kernel");
-    printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
     sys_exit(-1);
   }
   else if(user && fault_addr >= PHYS_BASE){
@@ -247,7 +248,7 @@ page_fault (struct intr_frame *f)
             not_present ? "not present" : "rights violation",
             write ? "writing" : "reading",
             user ? "user" : "kernel");
-    printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
+    //printf("eip : 0x%x esp : 0x%x eap : 0x%x\n", (uint32_t)f->eip, (uint32_t)f->esp, (uint32_t)f->eax);
     kill (f);
   }
   else{

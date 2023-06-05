@@ -289,10 +289,30 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
 
 
 
-
+bool vm_check_stack_vm_entry(struct thread * target_thread, struct intr_frame * f, uint8_t* addr, uint32_t byte_to_handle){
+  uint8_t * target_addr = pg_round_down(addr);
+  uint8_t * max_addr = pg_round_down(addr + byte_to_handle - 1);
+  bool is_upper_stack = (addr >= (f->esp - 32));
+  if(!is_upper_stack && max_addr >= PHYS_BASE){
+    return false;
+  }
+  while(target_addr <= max_addr){
+    struct vm_entry * found_entry = find_vm_entry_from(target_thread,target_addr);
+    if(!found_entry){
+        bool is_alloc = add_new_vm_entry_at(target_thread,PAGE_STACK_UNINIT,target_addr);
+        if(!is_alloc){
+          printf("add_new_vm_entry failed at vm_check_stack_vm_entry\n");
+          return false;
+        }
+    }
+    target_addr += PGSIZE;
+  }
+  return true;
+}
 
 /* above is region for swap handling*/
 bool vm_handle_syscall_alloc(struct thread * target_thread, struct intr_frame *f, uint8_t* addr, uint32_t byte_to_handle){//TODO need to imple auto swap out, swap in.
+  vm_check_stack_vm_entry(target_thread,f,addr,byte_to_handle);
   uint8_t* target_addr = pg_round_down(addr);
   uint8_t* max_addr = pg_round_down(addr + byte_to_handle-1);
   while(target_addr <= max_addr){
@@ -358,8 +378,8 @@ struct vm_entry * add_new_vm_entry_at(struct thread * target, enum page_status s
 struct vm_entry * get_new_vm_entry(enum page_status status, uint32_t vm_address){
     uint32_t maskedAddress = (uint32_t)pg_round_down((uint8_t*)vm_address);
     struct vm_entry * entry = malloc(sizeof(struct vm_entry));
-    memset(entry,0,sizeof(struct vm_entry));
     ASSERT(entry);
+    memset(entry,0,sizeof(struct vm_entry));
     if(entry == (struct vm_entry*)NULL){
       return entry;
     }
@@ -384,10 +404,6 @@ struct vm_entry * find_entry(uint32_t vm_address, struct hash * vm_list){
 }
 void vm_destroy(struct hash_elem *e, void * aux UNUSED){
     struct vm_entry * target = hash_entry(e, struct vm_entry, vm_list_elem);
-    /*if(target->flags & VF_InMemory){
-      palloc_free_page(pagedir_get_page(thread_current()->pagedir, target->vm_address));
-      pagedir_clear_page(thread_current()->pagedir, target->vm_address);
-    }*/
     free(target);
 }
 unsigned vm_hash_func (struct hash_elem *e, void *aux UNUSED){

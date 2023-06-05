@@ -26,7 +26,6 @@
 #else
 #define _DEBUG_PRINTF(...) /* do nothing */
 #endif
-#define MAX_STACK_SIZE 0x800000
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 static void push_arguments (const char *[], int cnt, void **esp);
@@ -724,7 +723,6 @@ setup_stack (void **esp)
 
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   target_vm_addr = (uint8_t*) PHYS_BASE - PGSIZE;
-  min_addr = (uint8_t*) PHYS_BASE - MAX_STACK_SIZE;
 
   if (kpage == NULL){
     vm_swap_out_LRU_Global();
@@ -739,11 +737,6 @@ setup_stack (void **esp)
         palloc_free_page (kpage);
       add_new_vm_entry_at(thread_current(),PAGE_STACK_INMEM,target_vm_addr);
     }
-  target_vm_addr -= PGSIZE;
-  while(target_vm_addr >= min_addr){
-    add_new_vm_entry_at(thread_current(), PAGE_STACK_UNINIT,target_vm_addr);
-    target_vm_addr -= PGSIZE;
-  }
   return success;
 }
 
