@@ -219,6 +219,7 @@ bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_en
     case PAGE_MMAP_INMEM:
       file_write_at(target_entry->swap_file,(void *)target_entry->vm_address,target_entry->file_left_size,target_entry->swap_file_offset);
       target_entry->entry_status = PAGE_MMAP_INDISK;
+      break;
     default:
      printf("unexpected entry status at swap out- ");
      print_status(target_entry->entry_status);
