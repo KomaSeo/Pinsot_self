@@ -18,7 +18,7 @@ bool is_entry_file(struct vm_entry *);
 bool is_entry_inblock(struct vm_entry *);
 
 bool is_status_inmem(enum page_status status){
-  return status == PAGE_FILE_INMEM||status == PAGE_STACK_INMEM;
+  return status == PAGE_FILE_INMEM||status == PAGE_STACK_INMEM || status == PAGE_MMAP_INMEM;
 }
 bool is_entry_inmem(struct vm_entry * entry){
   return is_status_inmem(entry->entry_status);
@@ -30,7 +30,7 @@ bool is_entry_file(struct vm_entry * entry){
   return is_status_file(entry->entry_status);
 }
 bool is_status_inblock(enum page_status status){
-  return status == PAGE_STACK_SWAPPED|| status == PAGE_FILE_INDISK || status == PAGE_FILE_SWAPPED;
+  return status == PAGE_STACK_SWAPPED|| status == PAGE_FILE_INDISK || status == PAGE_FILE_SWAPPED || status == PAGE_MMAP_INDISK;
 }
 bool is_entry_inblock(struct vm_entry * entry){
   return is_status_inblock(entry->entry_status);
@@ -55,6 +55,12 @@ void print_status(enum page_status status){
       break;
     case PAGE_STACK_UNINIT:
       _str = "PAGE_STACK_UNINIT";
+      break;
+    case PAGE_MMAP_INDISK:
+      _str = "PAGE_MMAP_INDISK";
+      break;
+    case PAGE_MMAP_INMEM:
+      _str = "PAGE_MMAP_INMEM";
       break;
     default:
       _str = "unexpected state";
@@ -210,6 +216,9 @@ bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_en
         target_entry->entry_status = PAGE_FILE_INDISK;
       }
       break;
+    case PAGE_MMAP_INMEM:
+      file_write_at(target_entry->swap_file,(void *)target_entry->vm_address,target_entry->file_left_size,target_entry->swap_file_offset);
+      target_entry->entry_status = PAGE_MMAP_INDISK;
     default:
      printf("unexpected entry status at swap out- ");
      print_status(target_entry->entry_status);
@@ -271,6 +280,15 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       lock_release(&target_pool->swap_lock);
       target_entry->entry_status = PAGE_STACK_INMEM;
       writable = true;
+      break;
+    }
+    case PAGE_MMAP_INDISK:{
+      size_t read_length = file_read_at(target_entry->swap_file,ppage,target_entry->file_left_size,target_entry->swap_file_offset);
+      ASSERT(read_length == target_entry->file_left_size);
+      size_t page_zero_bytes = PGSIZE - target_entry->file_left_size;
+      memset (ppage + target_entry->file_left_size, 0, page_zero_bytes);
+      target_entry->entry_status = PAGE_MMAP_INMEM;
+      writable = target_entry->is_file_writable;
       break;
     }
     default:

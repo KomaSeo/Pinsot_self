@@ -6,7 +6,7 @@ filesyspath=./build/tests/filesys/base/
 samplePath=../tests/vm/sample.txt
 
 #targetProg=pt-bad-read
-targetProg=pt-grow-stack
+targetProg=mmap-read
 
 rm ./swap.dsk
 pintos-mkdisk filesys.dsk --filesys-size=2

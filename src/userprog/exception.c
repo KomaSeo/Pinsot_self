@@ -212,6 +212,7 @@ page_fault (struct intr_frame *f)
       }
       break;
     case PAGE_STACK_SWAPPED:
+    case PAGE_MMAP_INDISK:
     case PAGE_FILE_INDISK:
     case PAGE_FILE_SWAPPED:
       alloc_result =vm_swap_in_page(thread_current(),found_entry);
@@ -219,7 +220,6 @@ page_fault (struct intr_frame *f)
         vm_swap_out_LRU(thread_current());
         retry_alloc_result = vm_swap_in_page(thread_current(),found_entry);
         if(retry_alloc_result == false){
-          //print_entry_info(found_entry);
           sys_exit(-1);
         }
       }
