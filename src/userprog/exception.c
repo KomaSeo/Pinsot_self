@@ -134,6 +134,7 @@ page_fault (struct intr_frame *f)
   bool isHandled = false;
   void *fault_addr;  /* Fault address. */
 
+
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction

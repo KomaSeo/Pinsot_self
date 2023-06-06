@@ -3,6 +3,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/palloc.h"
+#include "userprog/pagedir.h"
 #include "threads/interrupt.h"
 #include "filesys/file.h"
 #include <bitmap.h>
@@ -217,7 +218,9 @@ bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_en
       }
       break;
     case PAGE_MMAP_INMEM:
-      file_write_at(target_entry->swap_file,(void *)target_entry->vm_address,target_entry->file_left_size,target_entry->swap_file_offset);
+      if(pagedir_is_dirty(target_thread,target_entry->vm_address)){
+        file_write_at(target_entry->swap_file,(void *)target_entry->vm_address,target_entry->file_left_size,target_entry->swap_file_offset);
+      }
       target_entry->entry_status = PAGE_MMAP_INDISK;
       break;
     default:
@@ -289,7 +292,7 @@ bool vm_swap_in_page(struct thread * target_thread, struct vm_entry * target_ent
       size_t page_zero_bytes = PGSIZE - target_entry->file_left_size;
       memset (ppage + target_entry->file_left_size, 0, page_zero_bytes);
       target_entry->entry_status = PAGE_MMAP_INMEM;
-      writable = target_entry->is_file_writable;
+      writable = true;
       break;
     }
     default:

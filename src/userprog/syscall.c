@@ -501,7 +501,7 @@ int sys_mmap(int fd, void * addr){
   if(!addr || addr >= PHYS_BASE){
     return -1;
   }
-  if(!addr == pg_round_down(addr)){
+  if(!(addr == pg_round_down(addr))){
     return -1;
   }
   struct file_desc * target_file_desc = find_file_desc(current_thread,fd);
