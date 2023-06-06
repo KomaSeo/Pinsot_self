@@ -332,10 +332,10 @@ bool sys_remove(const char* filename) {
 }
 
 int sys_open(const char* file) {
-  check_user((const uint8_t*) file);
   if(file == NULL){
     sys_exit(-1);
   }
+  check_user((const uint8_t*) file);
 
   struct file* file_opened;
   struct file_desc* fd = palloc_get_page(0);

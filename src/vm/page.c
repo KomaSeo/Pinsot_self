@@ -17,7 +17,6 @@ bool is_status_inblock(enum page_status);
 bool is_entry_inmem(struct vm_entry *);
 bool is_entry_file(struct vm_entry *);
 bool is_entry_inblock(struct vm_entry *);
-
 bool is_status_inmem(enum page_status status){
   return status == PAGE_FILE_INMEM||status == PAGE_STACK_INMEM || status == PAGE_MMAP_INMEM;
 }
@@ -315,6 +314,9 @@ bool vm_check_stack_vm_entry(struct thread * target_thread, struct intr_frame * 
   uint8_t * target_addr = pg_round_down(addr);
   uint8_t * max_addr = pg_round_down(addr + byte_to_handle - 1);
   bool is_upper_stack = (addr >= (f->esp - 32));
+  if(max_addr >= PHYS_BASE){
+    return false;
+  }
   if(!is_upper_stack && max_addr >= PHYS_BASE){
     return false;
   }
@@ -340,7 +342,6 @@ bool vm_handle_syscall_alloc(struct thread * target_thread, struct intr_frame *f
   while(target_addr <= max_addr){
     struct vm_entry * found_entry = find_vm_entry_from(target_thread,target_addr);
     if(found_entry == NULL){
-      printf("vm_handle_stack_alloc_failed: reason - cannot find vm_entry from vm_list : addr - %x",addr);
       return false;
     }
     switch(found_entry->entry_status){
