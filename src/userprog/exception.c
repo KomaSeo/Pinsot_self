@@ -158,7 +158,6 @@ page_fault (struct intr_frame *f)
   bool is_user_page = is_user_vaddr(fault_addr);
 
   if(user && fault_addr == NULL){
-    printf("user try to access NULL.\n");
     sys_exit(-1);
   }
   if(!user && fault_addr == NULL){

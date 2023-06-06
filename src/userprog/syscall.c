@@ -307,6 +307,9 @@ int sys_wait(pid_t pid) {
 }
 
 bool sys_create(const char* filename, unsigned initial_size) {
+  if(filename == NULL){
+    sys_exit(-1);
+  }
   bool return_code;
   const uint8_t* file = (const uint8_t*)filename;
   check_user(file);
@@ -330,6 +333,9 @@ bool sys_remove(const char* filename) {
 
 int sys_open(const char* file) {
   check_user((const uint8_t*) file);
+  if(file == NULL){
+    sys_exit(-1);
+  }
 
   struct file* file_opened;
   struct file_desc* fd = palloc_get_page(0);
