@@ -6,7 +6,7 @@ filesyspath=./build/tests/filesys/base/
 samplePath=../tests/vm/sample.txt
 
 #targetProg=pt-bad-read
-targetProg=mmap-read
+targetProg=mmap-overlap
 
 rm ./swap.dsk
 pintos-mkdisk filesys.dsk --filesys-size=2
@@ -22,7 +22,7 @@ pintos -p ${vmpath}${targetProg} -a ${targetProg} -- -q
 #pintos -p ${filesyspath}child-syn-read -a child-syn-read -- -q
 #pintos -p ${vmpath}child-linear -a child-linear -- -q
 pintos -p ${vmpath}child-sort -a child-sort -p ${vmpath}child-linear -a child-linear -- -q
-pintos -p ${samplePath} -a sample.txt -- -q
+pintos -p ${samplePath} -a sample.txt -p ${vmpath}zeros -a zeros -- -q
 
 pintos -q run ${targetProg}
 #pintos --gdb -- run ${targetProg}

@@ -27,6 +27,8 @@ struct mmap_entry{
   uint32_t vm_address;
   size_t mmap_size;
   struct list_elem mmap_elem;
+  struct thread * mmap_thread;
+  int fd;
 };
 
 
@@ -56,8 +58,9 @@ int sys_write(int fd, const void *buffer, unsigned size);
 int sys_mmap(int fd, void * addr);
 void sys_munmap(int mapping);
 
-
-static struct mmap_entry * find_mmap_entry(int mapid);
+static struct mmap_entry * find_mmap_entry(int mapid,struct thread * target_thread);
+static struct mmap_entry * find_mmap_entry_by_FD(int fd, struct thread * target_thread);
+static void swap_out_every_mmap_for_cur_thread();
 static int allocate_mapid_t (void);
 
 struct lock filesys_lock;
@@ -279,8 +282,7 @@ void sys_halt(void) {
 void sys_exit(int status) {
   struct thread *current = thread_current ();
   printf("%s: exit(%d)\n", current->name, status);
-
-
+  swap_out_every_mmap_for_cur_thread();
   struct process_control_block *pcb = current->pcb;
   if(pcb != NULL) {
     pcb->exited = 1;
@@ -406,6 +408,14 @@ unsigned sys_tell(int fd) {
 void sys_close(int fd) {
   lock_acquire (&filesys_lock);
   struct file_desc* file_d = find_file_desc(thread_current(), fd);
+  struct mmap_entry * swap_target_entry = find_mmap_entry_by_FD(fd,thread_current());
+  if(swap_target_entry){
+    struct vm_entry * swap_target_vm_entry = find_vm_entry_from(thread_current(), swap_target_entry->vm_address);
+    ASSERT(swap_target_vm_entry);
+    if(!is_entry_inmem(swap_target_vm_entry)){
+      vm_swap_in_page(thread_current(),swap_target_vm_entry);
+    }
+  }
 
   if(file_d && file_d->file) {
     file_close(file_d->file);
@@ -478,37 +488,39 @@ void print_mmap_entry_info(struct mmap_entry * mmap){
   printf("|mapid : %d\n",mmap->mapid);
   printf("|mapped size : %d\n",mmap->mmap_size);
   printf("|mapped_vm_addrss : %x\n",mmap->vm_address);
+  printf("|fd : %x\n",mmap->fd);
+  printf("|thread_name : %x\n",mmap->mmap_thread->name);
 }
 
 int sys_mmap(int fd, void * addr){
   struct thread * current_thread = thread_current();
   struct list * fd_list = &current_thread->file_descriptors;
   if(fd <3){
-    sys_exit(-1);//STDIN, STDOUT, STDERR not valid
+    return -1;
   }
   if(!addr || addr >= PHYS_BASE){
-    sys_exit(-1);//NULL check.
+    return -1;
   }
   if(!addr == pg_round_down(addr)){
-    sys_exit(-1);
+    return -1;
   }
   struct file_desc * target_file_desc = find_file_desc(current_thread,fd);
   if(!target_file_desc){
-    sys_exit(-1);
+    return -1;
   }
 
   size_t size_of_file = file_length(target_file_desc->file);
   size_t left_size = size_of_file;
   size_t written_file_size = 0;
   if(size_of_file == 0){
-    sys_exit(-1);
+    return -1;
   }
 
   void * target_addr = addr;
   while(left_size > 0){
     struct vm_entry * found_entry = find_vm_entry_from(current_thread,target_addr);
     if(found_entry || target_addr >= PHYS_BASE - MAX_STACK_SIZE){
-      sys_exit(-1);
+      return -1;
     }
     struct vm_entry * target_entry = add_new_vm_entry_at(current_thread,PAGE_MMAP_INDISK,target_addr);
     size_t current_page_write_size = left_size > PGSIZE ? PGSIZE : left_size;
@@ -524,11 +536,14 @@ int sys_mmap(int fd, void * addr){
   map_target_entry->mapid = allocate_mapid_t();
   map_target_entry->mmap_size = size_of_file;
   map_target_entry->vm_address = addr;
+  map_target_entry->mmap_thread = current_thread;
+  map_target_entry->fd = fd;
   list_push_front(&mmap_list,&map_target_entry->mmap_elem);
   return map_target_entry->mapid;
 }
+
 void sys_munmap(int mapping){
-  struct mmap_entry * found_mmap_entry = find_mmap_entry(mapping);
+  struct mmap_entry * found_mmap_entry = find_mmap_entry(mapping, thread_current());
   if(!found_mmap_entry){
     sys_exit(-1);
   }
@@ -633,22 +648,48 @@ find_file_desc(struct thread *t, int fd)
       }
     }
   }
-
   return NULL;
 }
-static struct mmap_entry *
-find_mmap_entry(int mapid){
+static struct mmap_entry * find_mmap_entry(int mapid,struct thread * target_thread){
   bool empty = list_empty(&mmap_list);
   if (!empty){
     struct list_elem *e  = list_begin(&mmap_list);
     for(e; e!= list_end(&mmap_list); e = list_next(e)){
       struct mmap_entry * finding_entry = list_entry(e, struct mmap_entry, mmap_elem);
-      if(finding_entry->mapid == mapid){
+      if(finding_entry->mapid == mapid && finding_entry->mmap_thread == target_thread){
         return finding_entry;
       }
     }
   }
   return NULL;
+}
+static struct mmap_entry * find_mmap_entry_by_FD(int fd, struct thread * target_thread){
+  bool empty = list_empty(&mmap_list);
+  if (!empty){
+    struct list_elem *e  = list_begin(&mmap_list);
+    for(e; e!= list_end(&mmap_list); e = list_next(e)){
+      struct mmap_entry * finding_entry = list_entry(e, struct mmap_entry, mmap_elem);
+      if(finding_entry->fd == fd && finding_entry->mmap_thread == target_thread){
+        return finding_entry;
+      }
+    }
+  }
+  return NULL;
+}
+static void swap_out_every_mmap_for_cur_thread(){
+  struct thread * target_thread = thread_current();
+  bool empty = list_empty(&mmap_list);
+  if (!empty){
+    struct list_elem *e  = list_begin(&mmap_list);
+    for(e; e!= list_end(&mmap_list); e = list_next(e)){
+      struct mmap_entry * finding_entry = list_entry(e, struct mmap_entry, mmap_elem);
+      if(finding_entry->mmap_thread == target_thread){
+        sys_munmap(finding_entry->mapid);
+      }
+    }
+  }
+  return;
+
 }
 /******** Helper Function on MMAP*****************************/
 static int
@@ -663,3 +704,4 @@ allocate_mapid_t (void)
 
   return mapid_t;
 }
+

@@ -192,8 +192,7 @@ page_fault (struct intr_frame *f)
     sys_exit(-1);
   }
   else if(!(found_entry = find_vm_entry_from(cur_thre,fault_addr))){ //invalid access
-    printf("Can't find vm_entry - target_Addr : %x\n",fault_addr);
-    kill(f);
+    sys_exit(-1);
   }
   bool alloc_result;
   bool retry_alloc_result;
