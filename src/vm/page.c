@@ -218,7 +218,7 @@ bool vm_swap_out_page(struct thread * target_thread, struct vm_entry * target_en
       }
       break;
     case PAGE_MMAP_INMEM:
-      if(pagedir_is_dirty(target_thread,target_entry->vm_address)){
+      if(pagedir_is_dirty(target_thread->pagedir,target_entry->vm_address)){
         file_write_at(target_entry->swap_file,(void *)target_entry->vm_address,target_entry->file_left_size,target_entry->swap_file_offset);
       }
       target_entry->entry_status = PAGE_MMAP_INDISK;
